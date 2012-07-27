@@ -15,6 +15,8 @@
  */
 package com.nonninz.robomodel;
 
+import static android.provider.BaseColumns._ID;
+
 import java.util.Set;
 
 import roboguice.util.Ln;
@@ -24,17 +26,10 @@ import android.database.DatabaseUtils;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
-import android.provider.BaseColumns;
 
 import com.nonninz.robomodel.TypedContentValues.ElementType;
 
 class DatabaseManager {
-
-    class Column {
-        public String name;
-        public Class<?> type;
-    }
-
     private final Context mContext;
 
     /**
@@ -61,9 +56,13 @@ class DatabaseManager {
         if (id == RoboModel.UNSAVED_MODEL_ID) {
             return database.insertOrThrow(tableName, null, values.toContentValues());
         } else {
-            database.update(tableName, values.toContentValues(), BaseColumns._ID + " = " + id, null);
+            database.update(tableName, values.toContentValues(), _ID + " = " + id, null);
             return id;
         }
+    }
+
+    void clearUnusedColumns(String databaseName, String tableName, TypedContentValues values) {
+        // TODO: implement
     }
 
     /**
@@ -120,12 +119,18 @@ class DatabaseManager {
         for (final String column : columns) {
             sql.append(column).append(" ").append(values.getType(column).name()).append(", ");
         }
-        sql.append(BaseColumns._ID).append(" integer primary key autoincrement);");
+        sql.append(_ID).append(" integer primary key autoincrement);");
         Ln.d("Creating table: %s", sql.toString());
         db.execSQL(sql.toString());
     }
 
-    SQLiteDatabase openOrCreateDatabase(String databaseName) {
+    void deleteRecord(String databaseName, String tableName, long id) {
+        final SQLiteDatabase db = openOrCreateDatabase(databaseName);
+        db.delete(tableName, _ID + " = " + id, null);
+        db.close();
+    }
+
+    private SQLiteDatabase openOrCreateDatabase(String databaseName) {
         // TODO: allow other flags than MODE_PRIVATE?
         return mContext.openOrCreateDatabase(databaseName, 0, null);
     }
@@ -139,10 +144,8 @@ class DatabaseManager {
         } catch (final SQLiteException ex) {
             createOrPopulateTable(tableName, values, database);
             return attemptSave(tableName, values, id, database);
+        } finally {
+            database.close();
         }
-    }
-    
-    void clearUnusedColumns(String databaseName, String tableName, TypedContentValues values) {
-        // TODO: implement
     }
 }
