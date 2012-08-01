@@ -274,31 +274,26 @@ public abstract class RoboModel {
         }
     }
 
-    //    @Override
-    //    public String toString() {
-    //        SQLiteDatabase db = mDbHelper.getReadableDatabase();
-    //        String[] columns = getColumns(db);
-    //        mDbHelper.close();
-    //
-    //        StringBuilder b = new StringBuilder();
-    //        b.append(getTableName() + " {");
-    //        for (String string : columns) {
-    //            if (string.equals(BaseColumns._ID)) {
-    //                b.append(string + ": " + getId() + ", ");
-    //            } else {
-    //                Field f = getFieldForColumn(string);
-    //                boolean accessible = f.isAccessible();
-    //                f.setAccessible(true);
-    //                try {
-    //                    b.append(string + ": " + f.get(this) + ", ");
-    //                } catch (IllegalAccessException e) {
-    //                    b.append(string + ": (INACCESSIBLE), ");
-    //                }
-    //                f.setAccessible(accessible);
-    //            }
-    //        }
-    //        b.append("}");
-    //
-    //        return b.toString();
-    //    }
+    @Override
+    public String toString() {
+        final List<Field> fields = getSavedFields();
+
+        final StringBuilder b = new StringBuilder();
+        b.append(getTableName() + " {id: " + getId() + ", ");
+        String fieldName;
+        for (final Field f : fields) {
+            fieldName = f.getName();
+            final boolean accessible = f.isAccessible();
+            f.setAccessible(true);
+            try {
+                b.append(fieldName + ": " + f.get(this) + ", ");
+            } catch (final IllegalAccessException e) {
+                b.append(fieldName + ": (INACCESSIBLE), ");
+            }
+            f.setAccessible(accessible);
+        }
+        b.append("}");
+
+        return b.toString();
+    }
 }
