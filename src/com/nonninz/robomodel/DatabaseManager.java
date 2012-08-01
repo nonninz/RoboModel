@@ -56,7 +56,7 @@ class DatabaseManager {
         if (id == RoboModel.UNSAVED_MODEL_ID) {
             return database.insertOrThrow(tableName, null, values.toContentValues());
         } else {
-            database.update(tableName, values.toContentValues(), _ID + " = " + id, null);
+            database.update(tableName, values.toContentValues(), where(id), null);
             return id;
         }
     }
@@ -126,13 +126,21 @@ class DatabaseManager {
 
     void deleteRecord(String databaseName, String tableName, long id) {
         final SQLiteDatabase db = openOrCreateDatabase(databaseName);
-        db.delete(tableName, _ID + " = " + id, null);
+        db.delete(tableName, where(id), null);
         db.close();
     }
 
     private SQLiteDatabase openOrCreateDatabase(String databaseName) {
         // TODO: allow other flags than MODE_PRIVATE?
         return mContext.openOrCreateDatabase(databaseName, 0, null);
+    }
+
+    Cursor readRecord(String databaseName, String tableName, long id) {
+        final SQLiteDatabase db = openOrCreateDatabase(databaseName);
+        final Cursor query = db.query(tableName, null, where(id), null, null, null, null);
+
+        db.close();
+        return query;
     }
 
     long saveModel(String databaseName, String tableName, TypedContentValues values, long id) {
@@ -147,5 +155,9 @@ class DatabaseManager {
         } finally {
             database.close();
         }
+    }
+
+    private String where(long id) {
+        return _ID + " = " + id;
     }
 }

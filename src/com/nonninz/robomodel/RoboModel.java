@@ -26,8 +26,6 @@ import java.util.List;
 
 import android.content.Context;
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteOpenHelper;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
@@ -38,8 +36,6 @@ public abstract class RoboModel {
 
     @Inject
     Gson mGson;
-    @Inject
-    SQLiteOpenHelper mDbHelper;
 
     protected long mId = UNSAVED_MODEL_ID;
     private final Class<? extends RoboModel> mClass = this.getClass();
@@ -65,20 +61,6 @@ public abstract class RoboModel {
     public String getDatabaseName() {
         // TODO: from annotation
         return mContext.getPackageName();
-    }
-
-    private Field getFieldForColumn(String column) {
-        final Field[] fields = mClass.getDeclaredFields();
-        for (final Field field : fields) {
-            if (field.getName().equalsIgnoreCase(column)) {
-                return field;
-            }
-        }
-
-        // Not found: throw exception
-        final String msg = String.format("Class %s does not contain a field named %s",
-                        mClass.getSimpleName(), column);
-        throw new RuntimeException(msg);
     }
 
     public long getId() {
@@ -109,6 +91,7 @@ public abstract class RoboModel {
     }
 
     protected String getTableName() {
+        // TODO: customize possibility with annotation
         return mClass.getSimpleName();
     }
 
@@ -125,19 +108,83 @@ public abstract class RoboModel {
         reload();
     }
 
+    private void loadField(Field field, Cursor query) {
+        final Class<?> type = field.getType();
+        final boolean wasAccessible = field.isAccessible();
+        final int columnIndex = query.getColumnIndex(field.getName());
+        field.setAccessible(true);
+
+        /*
+         * TODO: There is the pontential of a problem here:
+         * What happens if the developer changes the type of a field between releases?
+         * 
+         * If he saves first, then the column type will be changed (In the future).
+         * If he loads first, we don't know if an Exception will be thrown if the
+         * types are incompatible, because it's undocumented in the Cursor documentation.
+         */
+
+        try {
+            if (type == String.class) {
+                field.set(this, query.getString(columnIndex));
+            } else if (type == Boolean.TYPE) {
+                final boolean value = query.getInt(columnIndex) == 1 ? true : false;
+                field.setBoolean(this, value);
+            } else if (type == Byte.TYPE) {
+                field.setByte(this, (byte) query.getShort(columnIndex));
+            } else if (type == Double.TYPE) {
+                field.setDouble(this, query.getDouble(columnIndex));
+            } else if (type == Float.TYPE) {
+                field.setFloat(this, query.getFloat(columnIndex));
+            } else if (type == Integer.TYPE) {
+                field.setInt(this, query.getInt(columnIndex));
+            } else if (type == Long.TYPE) {
+                field.setLong(this, query.getLong(columnIndex));
+            } else if (type == Short.TYPE) {
+                field.setShort(this, query.getShort(columnIndex));
+            } else if (type.isEnum()) {
+                final String string = query.getString(columnIndex);
+                if (string != null && string.length() > 0) {
+                    final Object[] constants = type.getEnumConstants();
+                    final Method method = type.getMethod("valueOf", Class.class, String.class);
+                    final Object value = method.invoke(constants[0], type, string);
+                    field.set(this, value);
+                }
+            } else {
+                // Try to de-json it (db column must be of type text)
+                try {
+                    final Object value = mGson.fromJson(query.getString(columnIndex),
+                                    field.getType());
+                    field.set(this, value);
+                } catch (final JsonSyntaxException e) {
+                    final String msg = String.format("Type %s is not supported for field %s", type,
+                                    field.getName());
+                    throw new IllegalArgumentException(msg);
+                }
+            }
+        } catch (final IllegalAccessException e) {
+            final String msg = String.format("Field %s is not accessible", type, field.getName());
+            throw new IllegalArgumentException(msg);
+        } catch (final NoSuchMethodException e) {
+            // Should not happen
+            throw new RuntimeException(e);
+        } catch (final InvocationTargetException e) {
+            // Should not happen
+            throw new RuntimeException(e);
+        } finally {
+            field.setAccessible(wasAccessible);
+        }
+    }
+
     public void reload() throws InstanceNotFoundException {
         if (!isSaved()) {
-            throw new IllegalStateException(
-                            "This model instance does not have a corresponding entry in the database");
+            throw new IllegalStateException("This instance has not yet been saved.");
         }
 
         // Retrieve current entry in the database
-        final SQLiteDatabase db = mDbHelper.getReadableDatabase();
-        final Cursor query = db.query(getTableName(), null, where(), null, null, null, null);
+        final Cursor query = mDatabaseManager.readRecord(getDatabaseName(), getTableName(), mId);
         if (query.moveToFirst()) {
             setFieldsWithQueryResult(query);
             query.close();
-            mDbHelper.close();
         } else {
             final String msg = String.format("No entry in database with id %d for model %s",
                             getId(),
@@ -214,66 +261,10 @@ public abstract class RoboModel {
                 continue;
             }
 
-            final Field field = getFieldForColumn(column);
-            setFieldValue(field, query);
-        }
-    }
-
-    private void setFieldValue(Field field, Cursor query) {
-        final Class<?> type = field.getType();
-        final boolean wasAccessible = field.isAccessible();
-        final int columnIndex = query.getColumnIndex(field.getName());
-        field.setAccessible(true);
-
-        try {
-            if (type == String.class) {
-                field.set(this, query.getString(columnIndex));
-            } else if (type == Boolean.TYPE) {
-                final boolean value = query.getInt(columnIndex) == 1 ? true : false;
-                field.setBoolean(this, value);
-            } else if (type == Byte.TYPE) {
-                field.setByte(this, (byte) query.getShort(columnIndex));
-            } else if (type == Double.TYPE) {
-                field.setDouble(this, query.getDouble(columnIndex));
-            } else if (type == Float.TYPE) {
-                field.setFloat(this, query.getFloat(columnIndex));
-            } else if (type == Integer.TYPE) {
-                field.setInt(this, query.getInt(columnIndex));
-            } else if (type == Long.TYPE) {
-                field.setLong(this, query.getLong(columnIndex));
-            } else if (type == Short.TYPE) {
-                field.setShort(this, query.getShort(columnIndex));
-            } else if (type.isEnum()) {
-                final String string = query.getString(columnIndex);
-                if (string != null && string.length() > 0) {
-                    final Object[] constants = type.getEnumConstants();
-                    final Method method = type.getMethod("valueOf", Class.class, String.class);
-                    final Object value = method.invoke(constants[0], type, string);
-                    field.set(this, value);
-                }
-            } else {
-                // Try to de-json it (db column must be of type text)
-                try {
-                    final Object value = mGson.fromJson(query.getString(columnIndex),
-                                    field.getType());
-                    field.set(this, value);
-                } catch (final JsonSyntaxException e) {
-                    final String msg = String.format("Type %s is not supported for field %s", type,
-                                    field.getName());
-                    throw new IllegalArgumentException(msg);
-                }
+            final List<Field> fields = getSavedFields();
+            for (final Field field : fields) {
+                loadField(field, query);
             }
-        } catch (final IllegalAccessException e) {
-            final String msg = String.format("Field %s is not accessible", type, field.getName());
-            throw new IllegalArgumentException(msg);
-        } catch (final NoSuchMethodException e) {
-            // Should not happen
-            throw new RuntimeException(e);
-        } catch (final InvocationTargetException e) {
-            // Should not happen
-            throw new RuntimeException(e);
-        } finally {
-            field.setAccessible(wasAccessible);
         }
     }
 
@@ -304,8 +295,4 @@ public abstract class RoboModel {
     //
     //        return b.toString();
     //    }
-
-    private String where() {
-        return _ID + " = " + mId;
-    }
 }
