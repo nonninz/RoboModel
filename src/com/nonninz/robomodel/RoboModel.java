@@ -16,6 +16,7 @@
 package com.nonninz.robomodel;
 
 import static android.provider.BaseColumns._ID;
+import static com.nonninz.robomodel.DatabaseManager.where;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -26,6 +27,7 @@ import java.util.List;
 
 import android.content.Context;
 import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
@@ -181,11 +183,15 @@ public abstract class RoboModel {
         }
 
         // Retrieve current entry in the database
-        final Cursor query = mDatabaseManager.readRecord(getDatabaseName(), getTableName(), mId);
+        final SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
+        final Cursor query = db.query(getTableName(), null, where(mId), null, null, null, null);
         if (query.moveToFirst()) {
             setFieldsWithQueryResult(query);
             query.close();
+            db.close();
         } else {
+            query.close();
+            db.close();
             final String msg = String.format("No entry in database with id %d for model %s",
                             getId(),
                             getTableName());

@@ -30,6 +30,10 @@ import android.database.sqlite.SQLiteException;
 import com.nonninz.robomodel.TypedContentValues.ElementType;
 
 class DatabaseManager {
+    public static String where(long id) {
+        return _ID + " = " + id;
+    }
+
     private final Context mContext;
 
     /**
@@ -130,17 +134,9 @@ class DatabaseManager {
         db.close();
     }
 
-    private SQLiteDatabase openOrCreateDatabase(String databaseName) {
+    SQLiteDatabase openOrCreateDatabase(String databaseName) {
         // TODO: allow other flags than MODE_PRIVATE?
         return mContext.openOrCreateDatabase(databaseName, 0, null);
-    }
-
-    Cursor readRecord(String databaseName, String tableName, long id) {
-        final SQLiteDatabase db = openOrCreateDatabase(databaseName);
-        final Cursor query = db.query(tableName, null, where(id), null, null, null, null);
-
-        db.close();
-        return query;
     }
 
     long saveModel(String databaseName, String tableName, TypedContentValues values, long id) {
@@ -155,9 +151,5 @@ class DatabaseManager {
         } finally {
             database.close();
         }
-    }
-
-    private String where(long id) {
-        return _ID + " = " + id;
     }
 }
