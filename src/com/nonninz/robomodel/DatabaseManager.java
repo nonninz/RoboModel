@@ -128,6 +128,16 @@ class DatabaseManager {
         db.execSQL(sql.toString());
     }
 
+    /**
+     * @param databaseName
+     * @param tableName
+     */
+    public void deleteAllRecords(String databaseName, String tableName) {
+        final SQLiteDatabase db = openOrCreateDatabase(databaseName);
+        db.delete(tableName, null, null);
+        db.close();
+    }
+
     void deleteRecord(String databaseName, String tableName, long id) {
         final SQLiteDatabase db = openOrCreateDatabase(databaseName);
         db.delete(tableName, where(id), null);

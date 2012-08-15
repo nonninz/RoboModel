@@ -4,6 +4,7 @@ import java.util.List;
 
 import android.test.AndroidTestCase;
 
+import com.nonninz.robomodel.InstanceNotFoundException;
 import com.nonninz.robomodel.RoboManager;
 import com.nonninz.robomodel.test.TestModel.Answer;
 
@@ -33,7 +34,7 @@ public class ManagerTestCase extends AndroidTestCase {
         assertEquals(0, mManager.all().size());
     }
 
-    public void testFind() {
+    public void testFind() throws InstanceNotFoundException {
         final TestModel model = new TestModel(mContext);
         model.bowlFish = false;
         model.byteField = 23;

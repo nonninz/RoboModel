@@ -15,42 +15,135 @@
  */
 package com.nonninz.robomodel;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.TypeVariable;
+import java.util.ArrayList;
 import java.util.List;
 
 import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.provider.BaseColumns;
 
 /**
  * @author Francesco Donadon <francesco.donadon@gmail.com>
  * 
  */
 public class RoboManager<T extends RoboModel> {
-    protected Context mContext;
+    private static final String CREATE_ERROR = "Error while creating a model instance.";
+
+    private static String sDatabaseName;
+    private static String sTableName;
+
+    private final DatabaseManager mDatabaseManager;
+    private final Context mContext;
 
     public RoboManager(Context context) {
         mContext = context;
+        mDatabaseManager = new DatabaseManager(context);
     }
 
     public List<T> all() {
-        return null; // TODO
+        final long[] ids = getSelectedModelIds(null, null, null, null, null);
+        return getRecords(ids);
     }
 
     public void clear() {
-        // TODO
+        mDatabaseManager.deleteAllRecords(getDatabaseName(), getTableName());
     }
 
+    @SuppressWarnings("unchecked")
     public T create() {
-        return null; // TODO
+        try {
+            return (T) createModelObject();
+        } catch (final Exception e) {
+            throw new RuntimeException(CREATE_ERROR, e);
+        }
     }
 
-    public T find(long id) {
-        return null; // TODO
+    private Object createModelObject() throws ClassNotFoundException, InstantiationException,
+                    IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+        final Class<?> modelType = getModelType();
+        final Object newInstance = modelType.getConstructor(Context.class).newInstance(mContext);
+        return newInstance;
     }
 
-    public List<T> where(String clause) {
-        return where(clause, null);
+    public T find(long id) throws InstanceNotFoundException {
+        final T record = create();
+        record.load(id);
+        return record;
     }
 
-    public List<T> where(String clause, String[] params) {
-        return null; // TODO
+    private String getDatabaseName() {
+        if (sDatabaseName == null) {
+            readModelParameters();
+        }
+
+        return sDatabaseName;
+    }
+
+    private Class<?> getModelType() throws ClassNotFoundException {
+        final TypeVariable<?>[] typeParameters = this.getClass().getTypeParameters();
+        final String typeName = typeParameters[0].getName();
+        return ClassLoader.getSystemClassLoader().loadClass(typeName);
+    }
+
+    private List<T> getRecords(long[] ids) {
+        try {
+            final List<T> result = new ArrayList<T>(ids.length);
+            for (final long id : ids) {
+                result.add(find(id));
+            }
+            return result;
+        } catch (final InstanceNotFoundException e) {
+            // Should never happen
+            throw new RuntimeException(e);
+        }
+    }
+
+    private long[] getSelectedModelIds(String selection, String[] selectionArgs, String groupBy,
+                    String having, String orderBy) {
+        final SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
+        final String columns[] = new String[] { BaseColumns._ID };
+        final Cursor query = db.query(getTableName(), columns, selection, selectionArgs, groupBy,
+                        having, orderBy);
+        final int columnIndex = query.getColumnIndex(BaseColumns._ID);
+        final long result[] = new long[query.getCount()];
+        for (query.moveToFirst(); !query.isAfterLast(); query.moveToNext()) {
+            result[query.getPosition()] = query.getLong(columnIndex);
+        }
+        return result;
+    }
+
+    private String getTableName() {
+        if (sTableName == null) {
+            readModelParameters();
+        }
+
+        return sTableName;
+    }
+
+    private void readModelParameters() {
+        try {
+            final RoboModel model = (RoboModel) createModelObject();
+            sDatabaseName = model.getDatabaseName();
+            sTableName = model.getTableName();
+        } catch (final Exception e) {
+            throw new RuntimeException("Error: getDatabaseName()", e);
+        }
+    }
+
+    public List<T> where(String selection) {
+        return where(selection, null, null, null, null);
+    }
+
+    public List<T> where(String selection, String[] selectionArgs) {
+        return where(selection, selectionArgs, null, null, null);
+    }
+
+    public List<T> where(String selection, String[] selectionArgs, String groupBy, String having,
+                    String orderBy) {
+        final long[] ids = getSelectedModelIds(selection, selectionArgs, groupBy, having, orderBy);
+        return getRecords(ids);
     }
 }
