@@ -36,6 +36,9 @@ import com.google.inject.Inject;
 public abstract class RoboModel {
     public static final long UNSAVED_MODEL_ID = -1;
 
+    private static String sDatabaseName;
+    private static String sTableName;
+
     @Inject
     Gson mGson;
 
@@ -61,8 +64,20 @@ public abstract class RoboModel {
     }
 
     public String getDatabaseName() {
-        // TODO: from annotation
-        return mContext.getPackageName();
+        if (sDatabaseName != null) {
+            return sDatabaseName;
+        }
+
+        final Table table = getClass().getAnnotation(Table.class);
+        if (table != null) {
+            sDatabaseName = table.value();
+        }
+
+        if (sDatabaseName == null) {
+            sDatabaseName = mContext.getPackageName();
+        }
+
+        return sDatabaseName;
     }
 
     public long getId() {
@@ -93,8 +108,20 @@ public abstract class RoboModel {
     }
 
     protected String getTableName() {
-        // TODO: customize possibility with annotation
-        return mClass.getSimpleName();
+        if (sTableName != null) {
+            return sTableName;
+        }
+
+        final Table table = getClass().getAnnotation(Table.class);
+        if (table != null) {
+            sTableName = table.value();
+        }
+
+        if (sTableName == null) {
+            sTableName = mClass.getSimpleName();
+        }
+
+        return sTableName;
     }
 
     public boolean isSaved() {
