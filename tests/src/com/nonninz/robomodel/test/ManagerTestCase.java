@@ -20,23 +20,23 @@ public class ManagerTestCase extends AndroidTestCase {
     }
 
     public void testAllFindsAllInstances() {
-        new TestModel(mContext).save();
-        new TestModel(mContext).save();
-        new TestModel(mContext).save();
+        mManager.create().save();
+        mManager.create().save();
+        mManager.create().save();
 
         assertEquals(3, mManager.all().size());
     }
 
     public void testClear() {
-        new TestModel(mContext).save();
-        new TestModel(mContext).save();
+        mManager.create().save();
+        mManager.create().save();
         assertEquals(2, mManager.all().size());
         mManager.clear();
         assertEquals(0, mManager.all().size());
     }
 
     public void testFind() throws InstanceNotFoundException {
-        final TestModel model = new TestModel(mContext);
+        final TestModel model = mManager.create();
         model.bowlFish = false;
         model.byteField = 23;
         model.doubleField = 56;
@@ -66,9 +66,9 @@ public class ManagerTestCase extends AndroidTestCase {
     }
 
     public void testWhere1() {
-        new TestModel(mContext).save();
-        new TestModel(mContext).save();
-        final TestModel model = new TestModel(mContext);
+        mManager.create().save();
+        mManager.create().save();
+        final TestModel model = mManager.create();
         model.springField = "Tapioca";
         model.save();
 
@@ -78,9 +78,9 @@ public class ManagerTestCase extends AndroidTestCase {
     }
 
     public void testWhere2() {
-        new TestModel(mContext).save();
-        new TestModel(mContext).save();
-        final TestModel model = new TestModel(mContext);
+        mManager.create().save();
+        mManager.create().save();
+        final TestModel model = mManager.create();
         model.springField = "Tapioca";
         model.save();
 

@@ -3,6 +3,7 @@ package com.nonninz.robomodel.test;
 import android.content.Context;
 import android.test.AndroidTestCase;
 
+import com.nonninz.robomodel.RoboManager;
 import com.nonninz.robomodel.RoboModel;
 import com.nonninz.robomodel.test.TestModel.Answer;
 
@@ -14,9 +15,10 @@ public class ModelReadTestCase extends AndroidTestCase {
         super.setUp();
 
         final Context context = getContext();
-        final RoboModel model = new TestModel(context);
+        final RoboManager<TestModel> manager = RoboManager.get(context, TestModel.class);
+        final RoboModel model = manager.create();
         model.save();
-        mModel = new TestModel(context);
+        mModel = manager.create();
         mModel.load(model.getId());
     }
 
