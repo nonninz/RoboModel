@@ -15,8 +15,8 @@
  */
 package com.nonninz.robomodel;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.TypeVariable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,9 +37,19 @@ public class RoboManager<T extends RoboModel> {
 
     private final DatabaseManager mDatabaseManager;
     private final Context mContext;
+    private Class<T> mKlass;
 
-    public RoboManager(Context context) {
+    /**
+     * @param context2
+     * @param klass
+     */
+    public static <TT extends RoboModel> RoboManager<TT> get(Context context, Class<TT> klass) {
+        return new RoboManager<TT>(context, klass);
+    }
+
+    private RoboManager(Context context, Class<T> klass) {
         mContext = context;
+        mKlass = klass;
         mDatabaseManager = new DatabaseManager(context);
     }
 
@@ -52,7 +62,6 @@ public class RoboManager<T extends RoboModel> {
         mDatabaseManager.deleteAllRecords(getDatabaseName(), getTableName());
     }
 
-    @SuppressWarnings("unchecked")
     public T create() {
         try {
             return (T) createModelObject();
@@ -61,11 +70,14 @@ public class RoboManager<T extends RoboModel> {
         }
     }
 
-    private Object createModelObject() throws ClassNotFoundException, InstantiationException,
+    private T createModelObject() throws ClassNotFoundException, InstantiationException,
                     IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-        final Class<?> modelType = getModelType();
-        final Object newInstance = modelType.getConstructor(Context.class).newInstance(mContext);
-        return newInstance;
+        final Constructor<T> constructor = mKlass.getDeclaredConstructor(Context.class);
+        final boolean accessible = constructor.isAccessible();
+        constructor.setAccessible(true);
+        T newModel = constructor.newInstance(mContext);
+        constructor.setAccessible(accessible);
+        return newModel;
     }
 
     public T find(long id) throws InstanceNotFoundException {
@@ -80,12 +92,6 @@ public class RoboManager<T extends RoboModel> {
         }
 
         return sDatabaseName;
-    }
-
-    private Class<?> getModelType() throws ClassNotFoundException {
-        final TypeVariable<?>[] typeParameters = this.getClass().getTypeParameters();
-        final String typeName = typeParameters[0].getName();
-        return ClassLoader.getSystemClassLoader().loadClass(typeName);
     }
 
     private List<T> getRecords(long[] ids) {

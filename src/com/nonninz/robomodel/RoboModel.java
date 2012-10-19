@@ -31,7 +31,6 @@ import android.database.sqlite.SQLiteDatabase;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
-import com.google.inject.Inject;
 
 public abstract class RoboModel {
     public static final long UNSAVED_MODEL_ID = -1;
@@ -39,20 +38,21 @@ public abstract class RoboModel {
     private static String sDatabaseName;
     private static String sTableName;
 
-    @Inject
-    Gson mGson;
-
     protected long mId = UNSAVED_MODEL_ID;
+
+    //TODO: Investigate the getClass() execution time
     private final Class<? extends RoboModel> mClass = this.getClass();
     private final Context mContext;
     private final DatabaseManager mDatabaseManager;
+    private final Gson mGson;
 
     /**
      * 
      */
-    public RoboModel(Context context) {
+    protected RoboModel(Context context) {
         mContext = context;
         mDatabaseManager = new DatabaseManager(context);
+        mGson = new Gson();
     }
 
     public void delete() {

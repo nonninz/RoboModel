@@ -6,6 +6,10 @@ import com.nonninz.robomodel.RoboModel;
 
 public class TestModel extends RoboModel {
 
+    TestModel(Context context) {
+        super(context);
+    }
+
     public enum Answer {
         LIFE, UNIVERSE, EVERYTHING
     }
@@ -22,8 +26,4 @@ public class TestModel extends RoboModel {
     public Answer enumOne = Answer.LIFE;
     public Answer enumTwo = Answer.UNIVERSE;
     public Answer enumThree = Answer.EVERYTHING;
-
-    public TestModel(Context context) {
-        super(context);
-    }
 }

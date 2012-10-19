@@ -15,7 +15,8 @@ public class ManagerTestCase extends AndroidTestCase {
     protected void setUp() throws Exception {
         super.setUp();
 
-        mManager = new RoboManager<TestModel>(getContext());
+        mManager = RoboManager.get(getContext(), TestModel.class);
+        mManager.clear();
     }
 
     public void testAllFindsAllInstances() {
