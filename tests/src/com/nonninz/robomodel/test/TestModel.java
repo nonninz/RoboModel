@@ -2,6 +2,7 @@ package com.nonninz.robomodel.test;
 
 import android.content.Context;
 
+import com.google.gson.annotations.Expose;
 import com.nonninz.robomodel.RoboModel;
 
 public class TestModel extends RoboModel {
@@ -14,16 +15,16 @@ public class TestModel extends RoboModel {
         LIFE, UNIVERSE, EVERYTHING
     }
 
-    public String springField = "BTW thanks for all the fish!";;
+    @Expose public String springField = "BTW thanks for all the fish!";;
 
-    public boolean bowlFish = true;
-    public byte byteField = 42;
-    public short shortField = 4242;
-    public int intField = 424242;
-    public long longField = 42424242;
-    public float floatField = 42.42f;
-    public double doubleField = 42.4242;
-    public Answer enumOne = Answer.LIFE;
-    public Answer enumTwo = Answer.UNIVERSE;
-    public Answer enumThree = Answer.EVERYTHING;
+    @Expose public boolean bowlFish = true;
+    @Expose public byte byteField = 42;
+    @Expose public short shortField = 4242;
+    @Expose public int intField = 424242;
+    @Expose public long longField = 42424242;
+    @Expose public float floatField = 42.42f;
+    @Expose public double doubleField = 42.4242;
+    @Expose public Answer enumOne = Answer.LIFE;
+    @Expose public Answer enumTwo = Answer.UNIVERSE;
+    @Expose public Answer enumThree = Answer.EVERYTHING;
 }

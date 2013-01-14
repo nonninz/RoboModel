@@ -17,6 +17,7 @@ package com.nonninz.robomodel;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,6 +25,10 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.provider.BaseColumns;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.InstanceCreator;
 
 /**
  * @author Francesco Donadon <francesco.donadon@gmail.com>
@@ -62,6 +67,20 @@ public class RoboManager<T extends RoboModel> {
         mDatabaseManager.deleteAllRecords(getDatabaseName(), getTableName());
     }
 
+    public T create(String json) {
+        Gson gson = new GsonBuilder().registerTypeAdapter(mKlass, new RoboInstanceCreator()).setPrettyPrinting().create();
+        return gson.fromJson(json, mKlass);
+    }
+    
+    public class RoboInstanceCreator implements InstanceCreator<T> {
+
+        @Override
+        public T createInstance(Type t) {
+          return create();
+        }
+      
+    }
+    
     public T create() {
         try {
             return (T) createModelObject();

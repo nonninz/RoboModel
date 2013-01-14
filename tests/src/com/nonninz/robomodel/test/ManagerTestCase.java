@@ -4,6 +4,8 @@ import java.util.List;
 
 import android.test.AndroidTestCase;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.nonninz.robomodel.InstanceNotFoundException;
 import com.nonninz.robomodel.RoboManager;
 import com.nonninz.robomodel.test.TestModel.Answer;
@@ -88,6 +90,24 @@ public class ManagerTestCase extends AndroidTestCase {
                         new String[] { "Tapioca" });
         assertEquals(1, foundModels.size());
         assertEquals(model.getId(), foundModels.get(0).getId());
+    }
+    
+    public void testFromJson() {
+        TestModel expected = new TestModel(mContext);
+        Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
+        
+        String json = gson.toJson(expected);
+        
+        TestModel actual = mManager.create(json);
+        
+        assertEquals(expected.bowlFish, actual.bowlFish);
+        assertEquals(expected.byteField, actual.byteField);
+        assertEquals(expected.doubleField, actual.doubleField);
+        assertEquals(expected.floatField, actual.floatField);
+        assertEquals(expected.intField, actual.intField);
+        assertEquals(expected.longField, actual.longField);
+        assertEquals(expected.shortField, actual.shortField);
+        assertEquals(expected.springField, actual.springField);
     }
 
 }
