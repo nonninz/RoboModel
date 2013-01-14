@@ -30,6 +30,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 
 public abstract class RoboModel {
@@ -42,7 +43,7 @@ public abstract class RoboModel {
 
     //TODO: Investigate the getClass() execution time
     private final Class<? extends RoboModel> mClass = this.getClass();
-    private final Context mContext;
+    private Context mContext;
     private final DatabaseManager mDatabaseManager;
     private final Gson mGson;
 
@@ -52,9 +53,13 @@ public abstract class RoboModel {
     protected RoboModel(Context context) {
         mContext = context;
         mDatabaseManager = new DatabaseManager(context);
-        mGson = new Gson();
+        mGson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
     }
 
+    protected Context getContext() {
+        return mContext;
+    }
+    
     public void delete() {
         if (!isSaved()) {
             throw new IllegalStateException("No record in database to delete");
