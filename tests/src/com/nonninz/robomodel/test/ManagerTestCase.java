@@ -19,8 +19,7 @@ public class ManagerTestCase extends AndroidTestCase {
 
         mManager = RoboManager.get(getContext(), TestModel.class);
         
-        // TODO : Not enough, should tear down the DB entirely 
-        mManager.clear();
+        mManager.dropDatabase();
     }
 
     public void testAllFindsAllInstances() {
