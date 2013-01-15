@@ -63,6 +63,18 @@ public class RoboManager<T extends RoboModel> {
         return getRecords(ids);
     }
 
+    public T last() {
+      final T record = create();
+      final long id = getLastId();
+      try {
+        record.load(id);
+      } catch (InstanceNotFoundException e) {
+        e.printStackTrace();
+        return null;
+      }
+      return record;
+    }
+    
     public void clear() {
         mDatabaseManager.deleteAllRecords(getDatabaseName(), getTableName());
     }
@@ -126,6 +138,16 @@ public class RoboManager<T extends RoboModel> {
         }
     }
 
+    private long getLastId() {
+        final SQLiteDatabase db = getPreparedDb();
+        
+        final String columns[] = new String[] { BaseColumns._ID };
+        Cursor query = db.query(getTableName(), columns, null, null, null, null, null);
+        query.moveToLast();
+        final int columnIndex = query.getColumnIndex(BaseColumns._ID);
+        return query.getLong(columnIndex);
+    }
+    
     private long[] getSelectedModelIds(String selection, String[] selectionArgs, String groupBy,
                     String having, String orderBy) {
         final SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());

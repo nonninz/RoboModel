@@ -18,6 +18,8 @@ public class ManagerTestCase extends AndroidTestCase {
         super.setUp();
 
         mManager = RoboManager.get(getContext(), TestModel.class);
+        
+        // TODO : Not enough, should tear down the DB entirely 
         mManager.clear();
     }
 
@@ -29,6 +31,19 @@ public class ManagerTestCase extends AndroidTestCase {
         assertEquals(3, mManager.all().size());
     }
 
+    public void testRead() {
+        assertEquals(0, mManager.all().size());
+    }
+    
+    public void testLast() {
+        mManager.create().save();
+        TestModel expected = mManager.create();
+        expected.springField = "Hello there!";
+        expected.save();
+
+        assertEquals("Hello there!", mManager.last().springField);
+    }
+    
     public void testClear() {
         mManager.create().save();
         mManager.create().save();
