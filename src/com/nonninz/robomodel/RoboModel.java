@@ -45,7 +45,7 @@ public abstract class RoboModel {
     private final Class<? extends RoboModel> mClass = this.getClass();
     private Context mContext;
     private final DatabaseManager mDatabaseManager;
-    private final Gson mGson;
+    private final Gson mGson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
 
     /**
      * 
@@ -53,7 +53,6 @@ public abstract class RoboModel {
     protected RoboModel(Context context) {
         mContext = context;
         mDatabaseManager = new DatabaseManager(context);
-        mGson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
     }
 
     protected Context getContext() {
@@ -328,4 +327,10 @@ public abstract class RoboModel {
 
         return b.toString();
     }
+    
+    public String toJson() {
+      Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
+      return gson.toJson(this);
+    }
+
 }
