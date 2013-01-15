@@ -37,7 +37,7 @@ public abstract class RoboModel {
     public static final long UNSAVED_MODEL_ID = -1;
 
     private static String sDatabaseName;
-    private static String sTableName;
+    private String mTableName;
 
     protected long mId = UNSAVED_MODEL_ID;
 
@@ -88,7 +88,7 @@ public abstract class RoboModel {
         return mId;
     }
 
-    private List<Field> getSavedFields() { //TODO: cache results
+    List<Field> getSavedFields() { //TODO: cache results
         final List<Field> savedFields = new ArrayList<Field>();
 
         // Check if we have a blacklist or whitelist policy for this model
@@ -112,20 +112,20 @@ public abstract class RoboModel {
     }
 
     protected String getTableName() {
-        if (sTableName != null) {
-            return sTableName;
+        if (mTableName != null) {
+            return mTableName;
         }
 
         final Table table = getClass().getAnnotation(Table.class);
         if (table != null) {
-            sTableName = table.value();
+            mTableName = table.value();
         }
 
-        if (sTableName == null) {
-            sTableName = mClass.getSimpleName();
+        if (mTableName == null) {
+            mTableName = mClass.getSimpleName();
         }
 
-        return sTableName;
+        return mTableName;
     }
 
     public boolean isSaved() {

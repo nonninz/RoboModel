@@ -81,7 +81,7 @@ class DatabaseManager {
      * @throws SQLException
      *             if it cannot create the table
      */
-    private void createOrPopulateTable(String tableName, TypedContentValues values,
+    void createOrPopulateTable(String tableName, TypedContentValues values,
                     SQLiteDatabase db) {
         Ln.d("Fixing table %s...", tableName);
         // Check if table exists

@@ -39,7 +39,7 @@ public class RoboManager<T extends RoboModel> {
     private static final String CREATE_ERROR = "Error while creating a model instance.";
 
     private static String sDatabaseName;
-    private static String sTableName;
+    private String mTableName;
 
     private final DatabaseManager mDatabaseManager;
     private final Context mContext;
@@ -125,6 +125,10 @@ public class RoboManager<T extends RoboModel> {
 
         return sDatabaseName;
     }
+    
+    public void dropDatabase() {
+        mContext.deleteDatabase(getDatabaseName());
+    }
 
     private List<T> getRecords(long[] ids) {
         try {
@@ -171,23 +175,23 @@ public class RoboManager<T extends RoboModel> {
       final List<Field> savedFields = model.getSavedFields();
       final TypedContentValues cv = new TypedContentValues(savedFields.size());
 
-      mDatabaseManager.createOrPopulateTable(sTableName, cv, db);
+      mDatabaseManager.createOrPopulateTable(getTableName(), cv, db);
       return db;
     }
 
     private String getTableName() {
-        if (sTableName == null) {
+        if (mTableName == null) {
             readModelParameters();
         }
 
-        return sTableName;
+        return mTableName;
     }
 
     private void readModelParameters() {
         try {
             final RoboModel model = (RoboModel) createModelObject();
             sDatabaseName = model.getDatabaseName();
-            sTableName = model.getTableName();
+            mTableName = model.getTableName();
         } catch (final Exception e) {
             throw new RuntimeException("Error: getDatabaseName()", e);
         }
