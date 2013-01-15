@@ -16,6 +16,7 @@
 package com.nonninz.robomodel;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -150,7 +151,8 @@ public class RoboManager<T extends RoboModel> {
     
     private long[] getSelectedModelIds(String selection, String[] selectionArgs, String groupBy,
                     String having, String orderBy) {
-        final SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
+        final SQLiteDatabase db = getPreparedDb();
+        
         final String columns[] = new String[] { BaseColumns._ID };
         final Cursor query = db.query(getTableName(), columns, selection, selectionArgs, groupBy,
                         having, orderBy);
@@ -160,6 +162,17 @@ public class RoboManager<T extends RoboModel> {
             result[query.getPosition()] = query.getLong(columnIndex);
         }
         return result;
+    }
+
+    private SQLiteDatabase getPreparedDb() {
+      final SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
+      
+      T model = create();
+      final List<Field> savedFields = model.getSavedFields();
+      final TypedContentValues cv = new TypedContentValues(savedFields.size());
+
+      mDatabaseManager.createOrPopulateTable(sTableName, cv, db);
+      return db;
     }
 
     private String getTableName() {
@@ -193,4 +206,5 @@ public class RoboManager<T extends RoboModel> {
         final long[] ids = getSelectedModelIds(selection, selectionArgs, groupBy, having, orderBy);
         return getRecords(ids);
     }
+
 }
