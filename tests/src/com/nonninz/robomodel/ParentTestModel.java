@@ -9,11 +9,14 @@ import com.nonninz.robomodel.RoboModel;
 
 public class ParentTestModel extends RoboModel {
 
+    @Expose 
+    public String test = "test";
+    @Expose @HasMany(TestModel.class)
+    public List<TestModel> testModels;
+
     ParentTestModel(Context context) {
         super(context);
     }
 
-    @Expose public String test = "test";
-    @Expose public List<TestModel> testModels;
 
 }
