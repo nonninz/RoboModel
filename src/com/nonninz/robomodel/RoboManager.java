@@ -25,6 +25,7 @@ import java.util.List;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteException;
 import android.provider.BaseColumns;
 
 import com.google.gson.Gson;
@@ -64,20 +65,23 @@ public class RoboManager<T extends RoboModel> {
         return getRecords(ids);
     }
 
-    public T last() {
+    public T last() throws InstanceNotFoundException {
       final T record = create();
       final long id = getLastId();
-      try {
-        record.load(id);
-      } catch (InstanceNotFoundException e) {
-        e.printStackTrace();
-        return null;
-      }
+      record.load(id);
       return record;
     }
     
     public void clear() {
-        mDatabaseManager.deleteAllRecords(getDatabaseName(), getTableName());
+        /*
+         * In case of invalid DB structure we try to fix it and re-run the delete
+         */
+        try {
+          mDatabaseManager.deleteAllRecords(getDatabaseName(), getTableName());
+        } catch (final SQLiteException e) {
+          prepareTable(mDatabaseManager.openOrCreateDatabase(getDatabaseName()));
+          mDatabaseManager.deleteAllRecords(getDatabaseName(), getTableName());
+        }
     }
 
     public T create(String json) {
@@ -143,40 +147,61 @@ public class RoboManager<T extends RoboModel> {
         }
     }
 
-    private long getLastId() {
-        final SQLiteDatabase db = getPreparedDb();
+    private long getLastId() throws InstanceNotFoundException {
+        final SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
         
         final String columns[] = new String[] { BaseColumns._ID };
-        Cursor query = db.query(getTableName(), columns, null, null, null, null, null);
-        query.moveToLast();
-        final int columnIndex = query.getColumnIndex(BaseColumns._ID);
-        return query.getLong(columnIndex);
+        Cursor query;
+        /*
+         * Try the query. If the Table doesn't exist, fix the DB and re-run the query. 
+         */
+        try {
+          query = db.query(getTableName(), columns, null, null, null, null, null);
+        } catch (final SQLiteException e) {
+          prepareTable(db);
+          query = db.query(getTableName(), columns, null, null, null, null, null);
+        }
+        
+        if (query.moveToLast()) {
+          final int columnIndex = query.getColumnIndex(BaseColumns._ID);
+          return query.getLong(columnIndex);
+        } else {
+          throw new InstanceNotFoundException("table " + mTableName +" is empty");
+        }
     }
     
     private long[] getSelectedModelIds(String selection, String[] selectionArgs, String groupBy,
                     String having, String orderBy) {
-        final SQLiteDatabase db = getPreparedDb();
+        final SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
         
         final String columns[] = new String[] { BaseColumns._ID };
-        final Cursor query = db.query(getTableName(), columns, selection, selectionArgs, groupBy,
-                        having, orderBy);
+        Cursor query;
+        
+        /*
+         * Try the query. If the Table doesn't exist, fix the DB and re-run the query. 
+         */
+        try {
+          query = db.query(getTableName(), columns, selection, selectionArgs, groupBy,
+              having, orderBy);
+        } catch (final SQLiteException e) {
+          prepareTable(db);
+          query = db.query(getTableName(), columns, selection, selectionArgs, groupBy,
+              having, orderBy);
+        }
+        
         final int columnIndex = query.getColumnIndex(BaseColumns._ID);
         final long result[] = new long[query.getCount()];
         for (query.moveToFirst(); !query.isAfterLast(); query.moveToNext()) {
-            result[query.getPosition()] = query.getLong(columnIndex);
+          result[query.getPosition()] = query.getLong(columnIndex);
         }
+        
         return result;
     }
 
-    private SQLiteDatabase getPreparedDb() {
-      final SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
-      
+    private void prepareTable(final SQLiteDatabase db) {
       T model = create();
-      final List<Field> savedFields = model.getSavedFields();
-      final TypedContentValues cv = new TypedContentValues(savedFields.size());
 
-      mDatabaseManager.createOrPopulateTable(getTableName(), cv, db);
-      return db;
+      mDatabaseManager.createOrPopulateTable(getTableName(), model.getSavedFields(), db);
     }
 
     private String getTableName() {

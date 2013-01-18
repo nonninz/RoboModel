@@ -30,11 +30,44 @@ public class ManagerTestCase extends AndroidTestCase {
         assertEquals(3, mManager.all().size());
     }
 
-    public void testRead() {
+
+    public void testAllOnEmptyState() {
         assertEquals(0, mManager.all().size());
     }
     
-    public void testLast() {
+    public void testFindOnEmptyState() {
+        Exception e = null;
+        try {
+            mManager.find(1);
+        } catch (Exception actual) {
+            e = actual;
+        }
+        assertEquals(InstanceNotFoundException.class, e.getClass()); 
+    }
+
+    public void testWhereOnEmptyState1() throws InstanceNotFoundException {
+        List<TestModel> result = mManager.where("byteField = 42");
+        
+        assertEquals(0, result.size());
+    }
+    
+    public void testWhereOnEmptyState2() throws InstanceNotFoundException {
+        List<TestModel> result = mManager.where("byteField = ?", 
+                        new String[] { String.valueOf(42) });
+        assertEquals(0, result.size());
+    }
+    
+    public void testLastOnEmptyState() {
+        Exception e = null;
+        try {
+            mManager.last();
+        } catch (Exception actual) {
+            e = actual;
+        }
+        assertEquals(InstanceNotFoundException.class, e.getClass()); 
+    }
+    
+    public void testLast() throws InstanceNotFoundException  {
         mManager.create().save();
         TestModel expected = mManager.create();
         expected.springField = "Hello there!";
@@ -51,6 +84,10 @@ public class ManagerTestCase extends AndroidTestCase {
         assertEquals(0, mManager.all().size());
     }
 
+    public void testClearOnEmptyState() {
+        mManager.clear();
+    }
+    
     public void testFind() throws InstanceNotFoundException {
         final TestModel model = mManager.create();
         model.bowlFish = false;

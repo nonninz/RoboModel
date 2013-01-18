@@ -17,7 +17,8 @@ package com.nonninz.robomodel;
 
 import static android.provider.BaseColumns._ID;
 
-import java.util.Set;
+import java.lang.reflect.Field;
+import java.util.List;
 
 import roboguice.util.Ln;
 import android.content.Context;
@@ -26,8 +27,6 @@ import android.database.DatabaseUtils;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
-
-import com.nonninz.robomodel.TypedContentValues.ElementType;
 
 class DatabaseManager {
     public static String where(long id) {
@@ -49,9 +48,9 @@ class DatabaseManager {
      * @param type
      * @param db
      */
-    private void addColumn(String tableName, String column, ElementType type, SQLiteDatabase db) {
+    private void addColumn(String tableName, String column, String type, SQLiteDatabase db) {
         final String sql = String.format("ALTER TABLE %s ADD %s %s;", tableName, column,
-                        type.name());
+                        type);
         db.execSQL(sql);
     }
 
@@ -63,10 +62,6 @@ class DatabaseManager {
             database.update(tableName, values.toContentValues(), where(id), null);
             return id;
         }
-    }
-
-    void clearUnusedColumns(String databaseName, String tableName, TypedContentValues values) {
-        // TODO: implement
     }
 
     /**
@@ -81,32 +76,33 @@ class DatabaseManager {
      * @throws SQLException
      *             if it cannot create the table
      */
-    void createOrPopulateTable(String tableName, TypedContentValues values,
+    void createOrPopulateTable(String tableName, List<Field> fields,
                     SQLiteDatabase db) {
+      
         Ln.d("Fixing table %s...", tableName);
+
         // Check if table exists
         try {
             DatabaseUtils.queryNumEntries(db, tableName);
         } catch (final SQLiteException ex) {
             // If it doesn't, create it and return
-            createTable(tableName, values, db);
+            createTable(tableName, fields, db);
             return;
         }
 
         // Otherwise, check if all fields exist
-        final Set<String> keySet = values.keySet();
-        for (final String column : keySet) {
+        for (final Field field : fields) {
             try {
                 // Get type of column
-                final Cursor typeCursor = db.rawQuery("select typeof (" + column + ") from "
+                final Cursor typeCursor = db.rawQuery("select typeof (" + field.getName() + ") from "
                                 + tableName, null);
                 typeCursor.moveToFirst();
                 final String type = typeCursor.getString(0);
-                Ln.v("Type of %s is %s", column, type);
+                Ln.v("Type of %s is %s", field.getName(), type);
 
                 // TODO: correct type?
             } catch (final SQLiteException e) {
-                addColumn(tableName, column, values.getType(column), db);
+                addColumn(tableName, field.getName(), getTypeForField(field), db);
             }
         }
     }
@@ -117,17 +113,44 @@ class DatabaseManager {
      * @param db
      * @return
      */
-    private void createTable(String tableName, TypedContentValues values, SQLiteDatabase db) {
+    private void createTable(String tableName, List<Field> fields, SQLiteDatabase db) {
         final StringBuilder sql = new StringBuilder("CREATE TABLE ").append(tableName).append(" (");
-        final Set<String> columns = values.keySet();
-        for (final String column : columns) {
-            sql.append(column).append(" ").append(values.getType(column).name()).append(", ");
+
+        for (final Field field : fields) {
+            sql.append(field.getName()).append(" ").append(getTypeForField(field)).append(", ");
         }
         sql.append(_ID).append(" integer primary key autoincrement);");
         Ln.d("Creating table: %s", sql.toString());
         db.execSQL(sql.toString());
     }
 
+    private String getTypeForField(Field field) {
+        final Class<?> type = field.getType();
+
+        if (type == String.class) {
+            return "TEXT";
+        } else if (type == Boolean.TYPE) {
+            return "BOOLEAN";
+        } else if (type == Byte.TYPE) {
+            return "INTEGER";
+        } else if (type == Double.TYPE) {
+            return "REAL";
+        } else if (type == Float.TYPE) {
+            return "REAL";
+        } else if (type == Integer.TYPE) {
+            return "INTEGER";
+        } else if (type == Long.TYPE) {
+            return "INTEGER";
+        } else if (type == Short.TYPE) {
+            return "INTEGER";
+        } else if (type.isEnum()) {
+            return "TEXT";
+        } else {
+            return "TEXT";
+        }
+    }
+    
+    
     /**
      * @param databaseName
      * @param tableName
@@ -149,15 +172,21 @@ class DatabaseManager {
         return mContext.openOrCreateDatabase(databaseName, 0, null);
     }
 
-    long saveModel(String databaseName, String tableName, TypedContentValues values, long id) {
-        final SQLiteDatabase database = openOrCreateDatabase(databaseName);
+    long saveModel(RoboModel model) {
+        final SQLiteDatabase database = openOrCreateDatabase(model.getDatabaseName());
 
+        List<Field> fields = model.getSavedFields();
+        final TypedContentValues cv = new TypedContentValues(fields.size());
+        for (final Field field : fields) {
+            model.saveField(field, cv);
+        }
+        
         // For optimizing speed, first try to save it. Then deal with errors (like table/field not existing);
         try {
-            return attemptSave(tableName, values, id, database);
+            return attemptSave(model.getTableName(), cv, model.mId, database);
         } catch (final SQLiteException ex) {
-            createOrPopulateTable(tableName, values, database);
-            return attemptSave(tableName, values, id, database);
+            createOrPopulateTable(model.getTableName(), fields, database);
+            return attemptSave(model.getTableName(), cv, model.mId, database);
         } finally {
             database.close();
         }

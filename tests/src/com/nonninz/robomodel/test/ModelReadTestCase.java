@@ -20,8 +20,7 @@ public class ModelReadTestCase extends AndroidTestCase {
         final RoboManager<TestModel> manager = RoboManager.get(context, TestModel.class);
         final RoboModel model = manager.create();
         model.save();
-        mModel = manager.create();
-        mModel.load(model.getId());
+        mModel = manager.find(model.getId());
     }
 
     public void testBooleanSavedCorrectly() {

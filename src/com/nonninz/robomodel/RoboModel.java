@@ -28,6 +28,7 @@ import java.util.List;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteException;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -132,7 +133,7 @@ public abstract class RoboModel {
         return mId != UNSAVED_MODEL_ID;
     }
 
-    public void load(long id) throws InstanceNotFoundException {
+    void load(long id) throws InstanceNotFoundException {
         if (id < 0) {
             throw new IllegalArgumentException("RoboModel id can not be negative.");
         }
@@ -215,7 +216,18 @@ public abstract class RoboModel {
 
         // Retrieve current entry in the database
         final SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
-        final Cursor query = db.query(getTableName(), null, where(mId), null, null, null, null);
+        Cursor query;
+        
+        /*
+         * Try to query the table. If the Table doesn't exist, fix the DB and re-run the query. 
+         */
+        try {
+          query = db.query(getTableName(), null, where(mId), null, null, null, null);
+        } catch (final SQLiteException e) {
+          mDatabaseManager.createOrPopulateTable(mTableName, getSavedFields(), db);
+          query = db.query(getTableName(), null, where(mId), null, null, null, null);
+        }
+        
         if (query.moveToFirst()) {
             setFieldsWithQueryResult(query);
             query.close();
@@ -231,17 +243,12 @@ public abstract class RoboModel {
     }
 
     public void save() {
-        final List<Field> savedFields = getSavedFields();
-        final TypedContentValues cv = new TypedContentValues(savedFields.size());
-        for (final Field field : savedFields) {
-            saveField(field, cv);
-        }
         // TODO: check no fields to save
 
-        mId = mDatabaseManager.saveModel(getDatabaseName(), getTableName(), cv, mId);
+        mId = mDatabaseManager.saveModel(this);
     }
 
-    private void saveField(Field field, TypedContentValues cv) {
+    void saveField(Field field, TypedContentValues cv) {
         final Class<?> type = field.getType();
         final boolean wasAccessible = field.isAccessible();
         field.setAccessible(true);
