@@ -1,11 +1,11 @@
-package com.nonninz.robomodel.test;
+package com.nonninz.robomodel;
 
 import android.content.Context;
 import android.test.AndroidTestCase;
 
 import com.nonninz.robomodel.RoboManager;
 import com.nonninz.robomodel.RoboModel;
-import com.nonninz.robomodel.test.TestModel.Answer;
+import com.nonninz.robomodel.TestModel.Answer;
 
 public class ModelReadTestCase extends AndroidTestCase {
     private TestModel mModel;

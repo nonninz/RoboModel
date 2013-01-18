@@ -1,4 +1,4 @@
-package com.nonninz.robomodel.test;
+package com.nonninz.robomodel;
 
 import android.content.Context;
 

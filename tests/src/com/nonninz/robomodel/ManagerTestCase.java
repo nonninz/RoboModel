@@ -1,4 +1,4 @@
-package com.nonninz.robomodel.test;
+package com.nonninz.robomodel;
 
 import java.util.List;
 
@@ -8,7 +8,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.nonninz.robomodel.InstanceNotFoundException;
 import com.nonninz.robomodel.RoboManager;
-import com.nonninz.robomodel.test.TestModel.Answer;
+import com.nonninz.robomodel.TestModel.Answer;
 
 public class ManagerTestCase extends AndroidTestCase {
     private RoboManager<TestModel> mManager;
