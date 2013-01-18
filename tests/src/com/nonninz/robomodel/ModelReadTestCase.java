@@ -1,11 +1,11 @@
-package com.nonninz.robomodel.test;
+package com.nonninz.robomodel;
 
 import android.content.Context;
 import android.test.AndroidTestCase;
 
 import com.nonninz.robomodel.RoboManager;
 import com.nonninz.robomodel.RoboModel;
-import com.nonninz.robomodel.test.TestModel.Answer;
+import com.nonninz.robomodel.TestModel.Answer;
 
 public class ModelReadTestCase extends AndroidTestCase {
     private TestModel mModel;
@@ -13,13 +13,14 @@ public class ModelReadTestCase extends AndroidTestCase {
     @Override
     protected void setUp() throws Exception {
         super.setUp();
+        
+        RoboManager.get(getContext(), TestModel.class).dropDatabase();
 
         final Context context = getContext();
         final RoboManager<TestModel> manager = RoboManager.get(context, TestModel.class);
         final RoboModel model = manager.create();
         model.save();
-        mModel = manager.create();
-        mModel.load(model.getId());
+        mModel = manager.find(model.getId());
     }
 
     public void testBooleanSavedCorrectly() {

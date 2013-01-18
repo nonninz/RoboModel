@@ -28,23 +28,25 @@ import java.util.List;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteException;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 
 public abstract class RoboModel {
     public static final long UNSAVED_MODEL_ID = -1;
 
     private static String sDatabaseName;
-    private static String sTableName;
+    private String mTableName;
 
     protected long mId = UNSAVED_MODEL_ID;
 
     //TODO: Investigate the getClass() execution time
     private final Class<? extends RoboModel> mClass = this.getClass();
-    private final Context mContext;
+    private Context mContext;
     private final DatabaseManager mDatabaseManager;
-    private final Gson mGson;
+    private final Gson mGson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
 
     /**
      * 
@@ -52,9 +54,12 @@ public abstract class RoboModel {
     protected RoboModel(Context context) {
         mContext = context;
         mDatabaseManager = new DatabaseManager(context);
-        mGson = new Gson();
     }
 
+    protected Context getContext() {
+        return mContext;
+    }
+    
     public void delete() {
         if (!isSaved()) {
             throw new IllegalStateException("No record in database to delete");
@@ -84,7 +89,7 @@ public abstract class RoboModel {
         return mId;
     }
 
-    private List<Field> getSavedFields() { //TODO: cache results
+    List<Field> getSavedFields() { //TODO: cache results
         final List<Field> savedFields = new ArrayList<Field>();
 
         // Check if we have a blacklist or whitelist policy for this model
@@ -108,27 +113,27 @@ public abstract class RoboModel {
     }
 
     protected String getTableName() {
-        if (sTableName != null) {
-            return sTableName;
+        if (mTableName != null) {
+            return mTableName;
         }
 
         final Table table = getClass().getAnnotation(Table.class);
         if (table != null) {
-            sTableName = table.value();
+            mTableName = table.value();
         }
 
-        if (sTableName == null) {
-            sTableName = mClass.getSimpleName();
+        if (mTableName == null) {
+            mTableName = mClass.getSimpleName();
         }
 
-        return sTableName;
+        return mTableName;
     }
 
     public boolean isSaved() {
         return mId != UNSAVED_MODEL_ID;
     }
 
-    public void load(long id) throws InstanceNotFoundException {
+    void load(long id) throws InstanceNotFoundException {
         if (id < 0) {
             throw new IllegalArgumentException("RoboModel id can not be negative.");
         }
@@ -211,7 +216,18 @@ public abstract class RoboModel {
 
         // Retrieve current entry in the database
         final SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
-        final Cursor query = db.query(getTableName(), null, where(mId), null, null, null, null);
+        Cursor query;
+        
+        /*
+         * Try to query the table. If the Table doesn't exist, fix the DB and re-run the query. 
+         */
+        try {
+          query = db.query(getTableName(), null, where(mId), null, null, null, null);
+        } catch (final SQLiteException e) {
+          mDatabaseManager.createOrPopulateTable(mTableName, getSavedFields(), db);
+          query = db.query(getTableName(), null, where(mId), null, null, null, null);
+        }
+        
         if (query.moveToFirst()) {
             setFieldsWithQueryResult(query);
             query.close();
@@ -227,17 +243,12 @@ public abstract class RoboModel {
     }
 
     public void save() {
-        final List<Field> savedFields = getSavedFields();
-        final TypedContentValues cv = new TypedContentValues(savedFields.size());
-        for (final Field field : savedFields) {
-            saveField(field, cv);
-        }
         // TODO: check no fields to save
 
-        mId = mDatabaseManager.saveModel(getDatabaseName(), getTableName(), cv, mId);
+        mId = mDatabaseManager.saveModel(this);
     }
 
-    private void saveField(Field field, TypedContentValues cv) {
+    void saveField(Field field, TypedContentValues cv) {
         final Class<?> type = field.getType();
         final boolean wasAccessible = field.isAccessible();
         field.setAccessible(true);
@@ -323,4 +334,10 @@ public abstract class RoboModel {
 
         return b.toString();
     }
+    
+    public String toJson() {
+      Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
+      return gson.toJson(this);
+    }
+
 }
