@@ -29,7 +29,7 @@ public final class TypedContentValues {
         BOOLEAN, INTEGER, REAL, TEXT, BLOB
     }
 
-    public static final String TAG = "TypedContentValues2";;
+    public static final String TAG = "TypedContentValues2";
 
     /** Holds the types values */
     private HashMap<String, ElementType> mTypes;
