@@ -17,8 +17,12 @@ package com.nonninz.robomodel;
 
 import static android.provider.BaseColumns._ID;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.List;
+
+import com.nonninz.robomodel.annotations.BelongsTo;
+import com.nonninz.robomodel.annotations.HasMany;
 
 import roboguice.util.Ln;
 import android.content.Context;
@@ -145,7 +149,10 @@ class DatabaseManager {
             return "INTEGER";
         } else if (type.isEnum()) {
             return "TEXT";
-        } else {
+        } else if (field.isAnnotationPresent(BelongsTo.class)) {
+            return "INTEGER";
+        }
+        else {
             return "TEXT";
         }
     }
@@ -172,7 +179,7 @@ class DatabaseManager {
         return mContext.openOrCreateDatabase(databaseName, 0, null);
     }
 
-    long saveModel(RoboModel model) {
+    void saveModel(RoboModel model) {
         final SQLiteDatabase database = openOrCreateDatabase(model.getDatabaseName());
 
         List<Field> fields = model.getSavedFields();
@@ -182,13 +189,44 @@ class DatabaseManager {
         }
         
         // For optimizing speed, first try to save it. Then deal with errors (like table/field not existing);
+        long id;
         try {
-            return attemptSave(model.getTableName(), cv, model.mId, database);
+            model.mId = attemptSave(model.getTableName(), cv, model.mId, database);
         } catch (final SQLiteException ex) {
             createOrPopulateTable(model.getTableName(), fields, database);
-            return attemptSave(model.getTableName(), cv, model.mId, database);
+            model.mId = attemptSave(model.getTableName(), cv, model.mId, database);
         } finally {
             database.close();
         }
+        
+        // Save children
+        saveReferencedModels(model);
     }
+
+    private void saveReferencedModels(RoboModel model) {
+        Field[] fields = model.getClass().getFields();
+        for (Field field: fields) {
+            if (field.isAnnotationPresent(HasMany.class)) {
+                final boolean wasAccessible = field.isAccessible();
+                field.setAccessible(true);
+                
+                try {
+                    Class<? extends RoboModel> referencedModel = field.getAnnotation(HasMany.class).value();
+                    if (Iterable.class.isAssignableFrom(field.getType())) {
+                        Iterable<?> list = (Iterable<?>) field.get(model); 
+                        for (Object item: list) {
+                            RoboModel cast = referencedModel.cast(item);
+                            cast.deepSave(model);
+                        }
+                    } else {
+                        //TODO ??
+                    }
+                } catch (IllegalAccessException e) {
+                    // Can't happen
+                } finally {
+                    field.setAccessible(wasAccessible);
+                }
+            }
+        }
+    } 
 }

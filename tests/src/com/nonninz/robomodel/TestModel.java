@@ -3,6 +3,7 @@ package com.nonninz.robomodel;
 import android.content.Context;
 
 import com.google.gson.annotations.Expose;
+import com.nonninz.robomodel.annotations.BelongsTo;
 
 public class TestModel extends RoboModel {
 
