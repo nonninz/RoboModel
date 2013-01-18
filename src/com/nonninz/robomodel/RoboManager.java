@@ -130,7 +130,7 @@ public class RoboManager<T extends RoboModel> {
         return sDatabaseName;
     }
     
-    public void dropDatabase() {
+    void dropDatabase() {
         mContext.deleteDatabase(getDatabaseName());
     }
 
