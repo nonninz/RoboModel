@@ -4,7 +4,7 @@ import android.test.AndroidTestCase;
 
 import com.nonninz.robomodel.RoboManager;
 
-public class ModelHierarchyTestCase extends AndroidTestCase {
+public class ModelTestCase extends AndroidTestCase {
     private RoboManager<TestModel> mChildManager;
     private RoboManager<ParentTestModel> mParentManager;
 
