@@ -169,8 +169,7 @@ class DatabaseManager {
     }
 
     SQLiteDatabase openOrCreateDatabase(String databaseName) {
-        // TODO: allow other flags than MODE_PRIVATE?
-        return mContext.openOrCreateDatabase(databaseName, 0, null);
+        return mContext.openOrCreateDatabase(databaseName, Context.MODE_PRIVATE, null);
     }
 
     void saveModel(RoboModel model) {
