@@ -38,23 +38,26 @@ import com.nonninz.robomodel.annotations.Exclude;
 import com.nonninz.robomodel.annotations.Save;
 import com.nonninz.robomodel.exceptions.InstanceNotFoundException;
 
+/**
+ * RoboModel:
+ * 1. Provides ORM style methods to operate with Model instances
+ *  - save()
+ *  - delete()
+ *  - reload()
+ * 
+ */
 public abstract class RoboModel {
     public static final long UNSAVED_MODEL_ID = -1;
 
-    private static String sDatabaseName;
     private String mTableName;
 
     protected long mId = UNSAVED_MODEL_ID;
 
-    //TODO: Investigate the getClass() execution time
     private final Class<? extends RoboModel> mClass = this.getClass();
     private Context mContext;
     private final DatabaseManager mDatabaseManager;
     private final Gson mGson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
 
-    /**
-     * 
-     */
     protected RoboModel(Context context) {
         mContext = context;
         mDatabaseManager = new DatabaseManager(context);
@@ -73,17 +76,16 @@ public abstract class RoboModel {
     }
 
     public String getDatabaseName() {
-        if (sDatabaseName != null) {
-            return sDatabaseName;
-        }
-
-        if (sDatabaseName == null) {
-            sDatabaseName = mContext.getPackageName();
-        }
-
-        return sDatabaseName;
+        return mDatabaseManager.getDatabaseName();
     }
 
+    String getTableName() {
+        if (mTableName == null) {
+            mTableName = mClass.getSimpleName();
+        }
+        return mTableName;
+    }
+    
     public long getId() {
         return mId;
     }
@@ -108,18 +110,6 @@ public abstract class RoboModel {
         return savedFields;
     }
 
-    protected String getTableName() {
-        if (mTableName != null) {
-            return mTableName;
-        }
-
-        if (mTableName == null) {
-            mTableName = mClass.getSimpleName();
-        }
-
-        return mTableName;
-    }
-
     public boolean isSaved() {
         return mId != UNSAVED_MODEL_ID;
     }
@@ -140,7 +130,7 @@ public abstract class RoboModel {
         field.setAccessible(true);
 
         /*
-         * TODO: There is the pontential of a problem here:
+         * TODO: There is the potential of a problem here:
          * What happens if the developer changes the type of a field between releases?
          * 
          * If he saves first, then the column type will be changed (In the future).
@@ -235,9 +225,23 @@ public abstract class RoboModel {
     }
 
     public void save() {
-        // TODO: check no fields to save
+      final SQLiteDatabase database = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
 
-        mDatabaseManager.saveModel(this);
+      List<Field> fields = getSavedFields();
+      final TypedContentValues cv = new TypedContentValues(fields.size());
+      for (final Field field : fields) {
+          saveField(field, cv);
+      }
+      
+      // First try to save it. Then deal with errors (like table/field not existing);
+      try {
+          mId = mDatabaseManager.insertOrUpdate(getTableName(), cv, mId, database);
+      } catch (final SQLiteException ex) {
+          mDatabaseManager.createOrPopulateTable(getTableName(), fields, database);
+          mId = mDatabaseManager.insertOrUpdate(getTableName(), cv, mId, database);
+      } finally {
+          database.close();
+      }
     }
 
     void saveField(Field field, TypedContentValues cv) {

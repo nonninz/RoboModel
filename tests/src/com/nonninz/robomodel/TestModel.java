@@ -3,7 +3,6 @@ package com.nonninz.robomodel;
 import android.content.Context;
 
 import com.google.gson.annotations.Expose;
-import com.nonninz.robomodel.annotations.BelongsTo;
 
 public class TestModel extends RoboModel {
 
@@ -15,9 +14,6 @@ public class TestModel extends RoboModel {
         LIFE, UNIVERSE, EVERYTHING
     }
 
-    @BelongsTo(ParentTestModel.class)
-    public ParentTestModel parent;
-    
     @Expose public String springField = "BTW thanks for all the fish!";;
 
     @Expose public boolean bowlFish = true;

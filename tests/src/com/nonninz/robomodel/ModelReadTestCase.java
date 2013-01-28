@@ -14,10 +14,11 @@ public class ModelReadTestCase extends AndroidTestCase {
     protected void setUp() throws Exception {
         super.setUp();
         
-        RoboManager.get(getContext(), TestModel.class).dropDatabase();
-
         final Context context = getContext();
         final RoboManager<TestModel> manager = RoboManager.get(context, TestModel.class);
+
+        context.deleteDatabase(manager.getDatabaseName());
+
         final RoboModel model = manager.create();
         model.save();
         mModel = manager.find(model.getId());

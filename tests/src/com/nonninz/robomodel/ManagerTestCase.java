@@ -19,7 +19,7 @@ public class ManagerTestCase extends AndroidTestCase {
 
         mManager = RoboManager.get(getContext(), TestModel.class);
         
-        mManager.dropDatabase();
+        getContext().deleteDatabase(mManager.getDatabaseName());
     }
 
     public void testAllFindsAllInstances() {
@@ -80,12 +80,12 @@ public class ManagerTestCase extends AndroidTestCase {
         mManager.create().save();
         mManager.create().save();
         assertEquals(2, mManager.all().size());
-        mManager.clear();
+        mManager.deleteAll();
         assertEquals(0, mManager.all().size());
     }
 
     public void testClearOnEmptyState() {
-        mManager.clear();
+        mManager.deleteAll();
     }
     
     public void testFind() throws InstanceNotFoundException {

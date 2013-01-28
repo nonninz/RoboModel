@@ -28,11 +28,46 @@ import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 
+/**
+ * 
+ * DatabaseManager:
+ * 1. Ensures the correct schema for the Database 
+ * 2. Holds the database specific configuration
+ *  
+ */
 class DatabaseManager {
     public static String where(long id) {
         return _ID + " = " + id;
     }
 
+    public static String getTypeForField(Field field) {
+      final Class<?> type = field.getType();
+
+      if (type == String.class) {
+          return "TEXT";
+      } else if (type == Boolean.TYPE) {
+          return "BOOLEAN";
+      } else if (type == Byte.TYPE) {
+          return "INTEGER";
+      } else if (type == Double.TYPE) {
+          return "REAL";
+      } else if (type == Float.TYPE) {
+          return "REAL";
+      } else if (type == Integer.TYPE) {
+          return "INTEGER";
+      } else if (type == Long.TYPE) {
+          return "INTEGER";
+      } else if (type == Short.TYPE) {
+          return "INTEGER";
+      } else if (type.isEnum()) {
+          return "TEXT";
+      }
+      else {
+          return "TEXT";
+      }
+    }
+
+    private static String sDatabaseName;
     private final Context mContext;
 
     /**
@@ -40,6 +75,13 @@ class DatabaseManager {
      */
     public DatabaseManager(Context context) {
         mContext = context;
+    }
+
+    public String getDatabaseName() {
+      if (sDatabaseName == null) {
+          sDatabaseName = mContext.getPackageName();
+      }
+      return sDatabaseName;
     }
 
     /**
@@ -54,7 +96,7 @@ class DatabaseManager {
         db.execSQL(sql);
     }
 
-    private long attemptSave(String tableName, TypedContentValues values, long id,
+    long insertOrUpdate(String tableName, TypedContentValues values, long id,
                     SQLiteDatabase database) {
         if (id == RoboModel.UNSAVED_MODEL_ID) {
             return database.insertOrThrow(tableName, null, values.toContentValues());
@@ -124,34 +166,6 @@ class DatabaseManager {
         db.execSQL(sql.toString());
     }
 
-    private String getTypeForField(Field field) {
-        final Class<?> type = field.getType();
-
-        if (type == String.class) {
-            return "TEXT";
-        } else if (type == Boolean.TYPE) {
-            return "BOOLEAN";
-        } else if (type == Byte.TYPE) {
-            return "INTEGER";
-        } else if (type == Double.TYPE) {
-            return "REAL";
-        } else if (type == Float.TYPE) {
-            return "REAL";
-        } else if (type == Integer.TYPE) {
-            return "INTEGER";
-        } else if (type == Long.TYPE) {
-            return "INTEGER";
-        } else if (type == Short.TYPE) {
-            return "INTEGER";
-        } else if (type.isEnum()) {
-            return "TEXT";
-        }
-        else {
-            return "TEXT";
-        }
-    }
-    
-    
     /**
      * @param databaseName
      * @param tableName
@@ -170,25 +184,5 @@ class DatabaseManager {
 
     SQLiteDatabase openOrCreateDatabase(String databaseName) {
         return mContext.openOrCreateDatabase(databaseName, Context.MODE_PRIVATE, null);
-    }
-
-    void saveModel(RoboModel model) {
-        final SQLiteDatabase database = openOrCreateDatabase(model.getDatabaseName());
-
-        List<Field> fields = model.getSavedFields();
-        final TypedContentValues cv = new TypedContentValues(fields.size());
-        for (final Field field : fields) {
-            model.saveField(field, cv);
-        }
-        
-        // For optimizing speed, first try to save it. Then deal with errors (like table/field not existing);
-        try {
-            model.mId = attemptSave(model.getTableName(), cv, model.mId, database);
-        } catch (final SQLiteException ex) {
-            createOrPopulateTable(model.getTableName(), fields, database);
-            model.mId = attemptSave(model.getTableName(), cv, model.mId, database);
-        } finally {
-            database.close();
-        }
     }
 }

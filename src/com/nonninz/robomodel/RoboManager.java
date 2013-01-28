@@ -35,16 +35,22 @@ import com.nonninz.robomodel.exceptions.InstanceNotFoundException;
 /**
  * @author Francesco Donadon <francesco.donadon@gmail.com>
  * 
+ * RoboManager:
+ * 1. Provides an interface to conveniently query and operate the DB for RoboModel instances with:
+ *  - all()
+ *  - first() - TODO
+ *  - last()
+ *  - find(id)
+ *  - deleteAll()
+ *  
  */
 public class RoboManager<T extends RoboModel> {
     private static final String CREATE_ERROR = "Error while creating a model instance.";
 
-    private static String sDatabaseName;
-    private String mTableName;
-
     private final DatabaseManager mDatabaseManager;
     private final Context mContext;
-    private Class<T> mKlass;
+    private final Class<T> mKlass;
+    private final RoboModel mSampleModel;
 
     /**
      * @param context2
@@ -58,6 +64,7 @@ public class RoboManager<T extends RoboModel> {
         mContext = context;
         mKlass = klass;
         mDatabaseManager = new DatabaseManager(context);
+        mSampleModel = create();
     }
 
     public List<T> all() {
@@ -72,7 +79,7 @@ public class RoboManager<T extends RoboModel> {
       return record;
     }
     
-    public void clear() {
+    public void deleteAll() {
         /*
          * In case of invalid DB structure we try to fix it and re-run the delete
          */
@@ -89,7 +96,7 @@ public class RoboManager<T extends RoboModel> {
         return gson.fromJson(json, mKlass);
     }
     
-    public class RoboInstanceCreator implements InstanceCreator<T> {
+    private class RoboInstanceCreator implements InstanceCreator<T> {
 
         @Override
         public T createInstance(Type t) {
@@ -122,29 +129,8 @@ public class RoboManager<T extends RoboModel> {
         return record;
     }
 
-    private String getDatabaseName() {
-        if (sDatabaseName == null) {
-            readModelParameters();
-        }
-
-        return sDatabaseName;
-    }
-    
-    void dropDatabase() {
-        mContext.deleteDatabase(getDatabaseName());
-    }
-
-    private List<T> getRecords(long[] ids) {
-        try {
-            final List<T> result = new ArrayList<T>(ids.length);
-            for (final long id : ids) {
-                result.add(find(id));
-            }
-            return result;
-        } catch (final InstanceNotFoundException e) {
-            // Should never happen
-            throw new RuntimeException(e);
-        }
+    public String getDatabaseName() {
+        return mDatabaseManager.getDatabaseName();
     }
 
     private long getLastId() throws InstanceNotFoundException {
@@ -166,7 +152,7 @@ public class RoboManager<T extends RoboModel> {
           final int columnIndex = query.getColumnIndex(BaseColumns._ID);
           return query.getLong(columnIndex);
         } else {
-          throw new InstanceNotFoundException("table " + mTableName +" is empty");
+          throw new InstanceNotFoundException("table " + getTableName() +" is empty");
         }
     }
     
@@ -205,21 +191,7 @@ public class RoboManager<T extends RoboModel> {
     }
 
     private String getTableName() {
-        if (mTableName == null) {
-            readModelParameters();
-        }
-
-        return mTableName;
-    }
-
-    private void readModelParameters() {
-        try {
-            final RoboModel model = (RoboModel) createModelObject();
-            sDatabaseName = model.getDatabaseName();
-            mTableName = model.getTableName();
-        } catch (final Exception e) {
-            throw new RuntimeException("Error: getDatabaseName()", e);
-        }
+        return mSampleModel.getTableName();
     }
 
     public List<T> where(String selection) {
@@ -236,4 +208,16 @@ public class RoboManager<T extends RoboModel> {
         return getRecords(ids);
     }
 
+    private List<T> getRecords(long[] ids) {
+        try {
+            final List<T> result = new ArrayList<T>(ids.length);
+            for (final long id : ids) {
+                result.add(find(id));
+            }
+            return result;
+        } catch (final InstanceNotFoundException e) {
+            // Should never happen
+            throw new RuntimeException(e);
+        }
+    }
 }
