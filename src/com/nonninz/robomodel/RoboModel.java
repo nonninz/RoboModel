@@ -36,6 +36,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import com.nonninz.robomodel.annotations.Exclude;
 import com.nonninz.robomodel.annotations.Save;
+import com.nonninz.robomodel.exceptions.InstanceNotFoundException;
 
 public abstract class RoboModel {
     public static final long UNSAVED_MODEL_ID = -1;

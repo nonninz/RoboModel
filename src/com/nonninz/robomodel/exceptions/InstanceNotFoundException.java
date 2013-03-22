@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.nonninz.robomodel;
+package com.nonninz.robomodel.exceptions;
 
 
 public class InstanceNotFoundException extends Exception {

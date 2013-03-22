@@ -30,6 +30,7 @@ import android.provider.BaseColumns;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.InstanceCreator;
+import com.nonninz.robomodel.exceptions.InstanceNotFoundException;
 
 /**
  * @author Francesco Donadon <francesco.donadon@gmail.com>
