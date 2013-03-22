@@ -37,7 +37,6 @@ import com.google.gson.JsonSyntaxException;
 import com.nonninz.robomodel.annotations.Exclude;
 import com.nonninz.robomodel.annotations.ExcludeByDefault;
 import com.nonninz.robomodel.annotations.Save;
-import com.nonninz.robomodel.annotations.Table;
 
 public abstract class RoboModel {
     public static final long UNSAVED_MODEL_ID = -1;
@@ -78,11 +77,6 @@ public abstract class RoboModel {
             return sDatabaseName;
         }
 
-        final Table table = getClass().getAnnotation(Table.class);
-        if (table != null) {
-            sDatabaseName = table.value();
-        }
-
         if (sDatabaseName == null) {
             sDatabaseName = mContext.getPackageName();
         }
@@ -120,11 +114,6 @@ public abstract class RoboModel {
     protected String getTableName() {
         if (mTableName != null) {
             return mTableName;
-        }
-
-        final Table table = getClass().getAnnotation(Table.class);
-        if (table != null) {
-            mTableName = table.value();
         }
 
         if (mTableName == null) {
