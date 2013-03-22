@@ -35,7 +35,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import com.nonninz.robomodel.annotations.Exclude;
-import com.nonninz.robomodel.annotations.ExcludeByDefault;
 import com.nonninz.robomodel.annotations.Save;
 
 public abstract class RoboModel {
@@ -91,17 +90,14 @@ public abstract class RoboModel {
     List<Field> getSavedFields() { //TODO: cache results
         final List<Field> savedFields = new ArrayList<Field>();
 
-        // Check if we have a blacklist or whitelist policy for this model
-        final boolean whitelist = getClass().isAnnotationPresent(ExcludeByDefault.class);
-
         final Field[] declaredFields = getClass().getDeclaredFields();
         boolean saved;
         for (final Field field : declaredFields) {
 
             saved = false;
-            saved = saved || field.isAnnotationPresent(Save.class);
-            saved = saved || !whitelist && Modifier.isPublic(field.getModifiers());
-            saved = saved && !field.isAnnotationPresent(Exclude.class);
+            saved = saved || field.isAnnotationPresent(Save.class); // If @Save is present, save it
+            saved = saved || Modifier.isPublic(field.getModifiers()); // If it is public, save it
+            saved = saved && !field.isAnnotationPresent(Exclude.class); // If @Exclude, don't save it
 
             if (saved) {
                 savedFields.add(field);

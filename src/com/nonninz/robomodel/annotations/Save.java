@@ -23,7 +23,7 @@ import java.lang.annotation.Target;
 import com.nonninz.robomodel.RoboModel;
 
 /**
- * Explicitly tell {@link RoboModel} to save this field in the database.
+ * Explicitly tell {@link RoboModel} to save this field in the database, even if it is not public.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.FIELD })
