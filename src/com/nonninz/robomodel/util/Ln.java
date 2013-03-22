@@ -31,9 +31,19 @@ public class Ln {
         Log.d("RoboModel", str);
     }
 
+    public static void d(Throwable t, String message, Object... args) {
+        final String str = String.format(message, args);
+        Log.d("RoboModel", str, t);
+    }
+
     public static void v(String message, Object... args) {
         final String str = String.format(message, args);
         Log.v("RoboModel", str);
+    }
+
+    public static void w(Throwable t, String message, Object... args) {
+        final String str = String.format(message, args);
+        Log.w("RoboModel", str, t);
     }
 
 }

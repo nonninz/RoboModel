@@ -15,9 +15,7 @@
  */
 package com.nonninz.robomodel;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,22 +25,24 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.provider.BaseColumns;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.InstanceCreator;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nonninz.robomodel.exceptions.InstanceNotFoundException;
+import com.nonninz.robomodel.exceptions.JsonException;
 
 /**
  * @author Francesco Donadon <francesco.donadon@gmail.com>
  * 
- * RoboManager:
- * 1. Provides an interface to conveniently query and operate the DB for RoboModel instances with:
- *  - all()
- *  - first() - TODO
- *  - last()
- *  - find(id)
- *  - deleteAll()
- *  
+ *         RoboManager:
+ *         1. Provides an interface to conveniently query and operate the DB for RoboModel instances with:
+ *         - all()
+ *         - first() - TODO
+ *         - last()
+ *         - find(id)
+ *         - deleteAll()
+ * @param <C>
+ * 
  */
 public class RoboManager<T extends RoboModel> {
     private static final String CREATE_ERROR = "Error while creating a model instance.";
@@ -73,38 +73,50 @@ public class RoboManager<T extends RoboModel> {
     }
 
     public T last() throws InstanceNotFoundException {
-      final T record = create();
-      final long id = getLastId();
-      record.load(id);
-      return record;
+        final T record = create();
+        final long id = getLastId();
+        record.load(id);
+        return record;
     }
-    
+
     public void deleteAll() {
         /*
          * In case of invalid DB structure we try to fix it and re-run the delete
          */
         try {
-          mDatabaseManager.deleteAllRecords(getDatabaseName(), getTableName());
+            mDatabaseManager.deleteAllRecords(getDatabaseName(), getTableName());
         } catch (final SQLiteException e) {
-          prepareTable(mDatabaseManager.openOrCreateDatabase(getDatabaseName()));
-          mDatabaseManager.deleteAllRecords(getDatabaseName(), getTableName());
+            prepareTable(mDatabaseManager.openOrCreateDatabase(getDatabaseName()));
+            mDatabaseManager.deleteAllRecords(getDatabaseName(), getTableName());
         }
     }
 
     public T create(String json) {
-        Gson gson = new GsonBuilder().registerTypeAdapter(mKlass, new RoboInstanceCreator()).setPrettyPrinting().create();
-        return gson.fromJson(json, mKlass);
-    }
-    
-    private class RoboInstanceCreator implements InstanceCreator<T> {
-
-        @Override
-        public T createInstance(Type t) {
-          return create();
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.configure(MapperFeature.USE_ANNOTATIONS, true);
+        mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+        try {
+            final T result = mapper.readValue(json, mKlass);
+            result.setContext(mContext);
+            return result;
+        } catch (Exception e) {
+            throw new JsonException("Error while parsing JSON", e);
         }
-      
     }
-    
+
+    public <C extends RoboModelCollection<T>> C createCollection(String json, Class<C> klass) {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.configure(MapperFeature.USE_ANNOTATIONS, true);
+        mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+        try {
+            final C result = mapper.readValue(json, klass);
+            result.setContext(mContext);
+            return result;
+        } catch (Exception e) {
+            throw new JsonException("Error while parsing JSON", e);
+        }
+    }
+
     public T create() {
         try {
             return (T) createModelObject();
@@ -115,11 +127,9 @@ public class RoboManager<T extends RoboModel> {
 
     private T createModelObject() throws ClassNotFoundException, InstantiationException,
                     IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-        final Constructor<T> constructor = mKlass.getDeclaredConstructor(Context.class);
-        final boolean accessible = constructor.isAccessible();
-        constructor.setAccessible(true);
-        T newModel = constructor.newInstance(mContext);
-        constructor.setAccessible(accessible);
+
+        T newModel = mKlass.newInstance();
+        newModel.setContext(mContext);
         return newModel;
     }
 
@@ -135,59 +145,59 @@ public class RoboManager<T extends RoboModel> {
 
     private long getLastId() throws InstanceNotFoundException {
         final SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
-        
+
         final String columns[] = new String[] { BaseColumns._ID };
         Cursor query;
         /*
-         * Try the query. If the Table doesn't exist, fix the DB and re-run the query. 
+         * Try the query. If the Table doesn't exist, fix the DB and re-run the query.
          */
         try {
-          query = db.query(getTableName(), columns, null, null, null, null, null);
+            query = db.query(getTableName(), columns, null, null, null, null, null);
         } catch (final SQLiteException e) {
-          prepareTable(db);
-          query = db.query(getTableName(), columns, null, null, null, null, null);
+            prepareTable(db);
+            query = db.query(getTableName(), columns, null, null, null, null, null);
         }
-        
+
         if (query.moveToLast()) {
-          final int columnIndex = query.getColumnIndex(BaseColumns._ID);
-          return query.getLong(columnIndex);
+            final int columnIndex = query.getColumnIndex(BaseColumns._ID);
+            return query.getLong(columnIndex);
         } else {
-          throw new InstanceNotFoundException("table " + getTableName() +" is empty");
+            throw new InstanceNotFoundException("table " + getTableName() + " is empty");
         }
     }
-    
+
     private long[] getSelectedModelIds(String selection, String[] selectionArgs, String groupBy,
                     String having, String orderBy) {
         final SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
-        
+
         final String columns[] = new String[] { BaseColumns._ID };
         Cursor query;
-        
+
         /*
-         * Try the query. If the Table doesn't exist, fix the DB and re-run the query. 
+         * Try the query. If the Table doesn't exist, fix the DB and re-run the query.
          */
         try {
-          query = db.query(getTableName(), columns, selection, selectionArgs, groupBy,
-              having, orderBy);
+            query = db.query(getTableName(), columns, selection, selectionArgs, groupBy,
+                            having, orderBy);
         } catch (final SQLiteException e) {
-          prepareTable(db);
-          query = db.query(getTableName(), columns, selection, selectionArgs, groupBy,
-              having, orderBy);
+            prepareTable(db);
+            query = db.query(getTableName(), columns, selection, selectionArgs, groupBy,
+                            having, orderBy);
         }
-        
+
         final int columnIndex = query.getColumnIndex(BaseColumns._ID);
         final long result[] = new long[query.getCount()];
         for (query.moveToFirst(); !query.isAfterLast(); query.moveToNext()) {
-          result[query.getPosition()] = query.getLong(columnIndex);
+            result[query.getPosition()] = query.getLong(columnIndex);
         }
-        
+
         return result;
     }
 
     private void prepareTable(final SQLiteDatabase db) {
-      T model = create();
+        T model = create();
 
-      mDatabaseManager.createOrPopulateTable(getTableName(), model.getSavedFields(), db);
+        mDatabaseManager.createOrPopulateTable(getTableName(), model.getSavedFields(), db);
     }
 
     private String getTableName() {

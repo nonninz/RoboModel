@@ -31,21 +31,27 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonSyntaxException;
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nonninz.robomodel.annotations.Exclude;
 import com.nonninz.robomodel.annotations.Save;
 import com.nonninz.robomodel.exceptions.InstanceNotFoundException;
+import com.nonninz.robomodel.exceptions.JsonException;
+import com.nonninz.robomodel.util.Ln;
 
 /**
  * RoboModel:
  * 1. Provides ORM style methods to operate with Model instances
- *  - save()
- *  - delete()
- *  - reload()
+ * - save()
+ * - delete()
+ * - reload()
  * 
  */
+@JsonAutoDetect(creatorVisibility = Visibility.NONE, fieldVisibility = Visibility.PUBLIC_ONLY, getterVisibility = Visibility.NONE, setterVisibility = Visibility.NONE, isGetterVisibility = Visibility.NONE)
 public abstract class RoboModel {
     public static final long UNSAVED_MODEL_ID = -1;
 
@@ -55,10 +61,10 @@ public abstract class RoboModel {
 
     private final Class<? extends RoboModel> mClass = this.getClass();
     private Context mContext;
-    private final DatabaseManager mDatabaseManager;
-    private final Gson mGson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
+    private DatabaseManager mDatabaseManager;
+    private final ObjectMapper mMapper = new ObjectMapper();
 
-    protected RoboModel(Context context) {
+    void setContext(Context context) {
         mContext = context;
         mDatabaseManager = new DatabaseManager(context);
     }
@@ -66,7 +72,7 @@ public abstract class RoboModel {
     protected Context getContext() {
         return mContext;
     }
-    
+
     public void delete() {
         if (!isSaved()) {
             throw new IllegalStateException("No record in database to delete");
@@ -85,7 +91,7 @@ public abstract class RoboModel {
         }
         return mTableName;
     }
-    
+
     public long getId() {
         return mId;
     }
@@ -167,12 +173,13 @@ public abstract class RoboModel {
             } else {
                 // Try to de-json it (db column must be of type text)
                 try {
-                    final Object value = mGson.fromJson(query.getString(columnIndex),
+                    final Object value = mMapper.readValue(query.getString(columnIndex),
                                     field.getType());
                     field.set(this, value);
-                } catch (final JsonSyntaxException e) {
+                } catch (final Exception e) {
                     final String msg = String.format("Type %s is not supported for field %s", type,
                                     field.getName());
+                    Ln.w(e, msg);
                     throw new IllegalArgumentException(msg);
                 }
             }
@@ -191,7 +198,7 @@ public abstract class RoboModel {
     }
 
     @SuppressLint("DefaultLocale")
-	public void reload() throws InstanceNotFoundException {
+    public void reload() throws InstanceNotFoundException {
         if (!isSaved()) {
             throw new IllegalStateException("This instance has not yet been saved.");
         }
@@ -199,17 +206,17 @@ public abstract class RoboModel {
         // Retrieve current entry in the database
         final SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
         Cursor query;
-        
+
         /*
-         * Try to query the table. If the Table doesn't exist, fix the DB and re-run the query. 
+         * Try to query the table. If the Table doesn't exist, fix the DB and re-run the query.
          */
         try {
-          query = db.query(getTableName(), null, where(mId), null, null, null, null);
+            query = db.query(getTableName(), null, where(mId), null, null, null, null);
         } catch (final SQLiteException e) {
-          mDatabaseManager.createOrPopulateTable(mTableName, getSavedFields(), db);
-          query = db.query(getTableName(), null, where(mId), null, null, null, null);
+            mDatabaseManager.createOrPopulateTable(mTableName, getSavedFields(), db);
+            query = db.query(getTableName(), null, where(mId), null, null, null, null);
         }
-        
+
         if (query.moveToFirst()) {
             setFieldsWithQueryResult(query);
             query.close();
@@ -225,23 +232,23 @@ public abstract class RoboModel {
     }
 
     public void save() {
-      final SQLiteDatabase database = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
+        final SQLiteDatabase database = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
 
-      List<Field> fields = getSavedFields();
-      final TypedContentValues cv = new TypedContentValues(fields.size());
-      for (final Field field : fields) {
-          saveField(field, cv);
-      }
-      
-      // First try to save it. Then deal with errors (like table/field not existing);
-      try {
-          mId = mDatabaseManager.insertOrUpdate(getTableName(), cv, mId, database);
-      } catch (final SQLiteException ex) {
-          mDatabaseManager.createOrPopulateTable(getTableName(), fields, database);
-          mId = mDatabaseManager.insertOrUpdate(getTableName(), cv, mId, database);
-      } finally {
-          database.close();
-      }
+        List<Field> fields = getSavedFields();
+        final TypedContentValues cv = new TypedContentValues(fields.size());
+        for (final Field field : fields) {
+            saveField(field, cv);
+        }
+
+        // First try to save it. Then deal with errors (like table/field not existing);
+        try {
+            mId = mDatabaseManager.insertOrUpdate(getTableName(), cv, mId, database);
+        } catch (final SQLiteException ex) {
+            mDatabaseManager.createOrPopulateTable(getTableName(), fields, database);
+            mId = mDatabaseManager.insertOrUpdate(getTableName(), cv, mId, database);
+        } finally {
+            database.close();
+        }
     }
 
     void saveField(Field field, TypedContentValues cv) {
@@ -273,13 +280,17 @@ public abstract class RoboModel {
                     final String str = (String) method.invoke(value);
                     cv.put(field.getName(), str);
                 }
-        }
+            }
             else {
                 // Try to JSONify it (db column must be of type text)
-                final String json = mGson.toJson(field.get(this));
+                final String json = mMapper.writeValueAsString(field.get(this));
                 cv.put(field.getName(), json);
             }
         } catch (final IllegalAccessException e) {
+            final String msg = String.format("Field %s is not accessible", type, field.getName());
+            throw new IllegalArgumentException(msg);
+        } catch (final JsonProcessingException e) {
+            Ln.w(e, "Error while dumping %s of type %s to Json", field.getName(), type);
             final String msg = String.format("Field %s is not accessible", type, field.getName());
             throw new IllegalArgumentException(msg);
         } catch (final NoSuchMethodException e) {
@@ -331,9 +342,12 @@ public abstract class RoboModel {
 
         return b.toString();
     }
-    
+
     public String toJson() {
-      Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
-      return gson.toJson(this);
+        try {
+            return mMapper.writeValueAsString(this);
+        } catch (JsonProcessingException e) {
+            throw new JsonException(e);
+        }
     }
 }
