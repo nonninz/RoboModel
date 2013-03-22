@@ -25,6 +25,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -33,10 +34,8 @@ import android.database.sqlite.SQLiteException;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
-import com.nonninz.robomodel.annotations.BelongsTo;
 import com.nonninz.robomodel.annotations.Exclude;
 import com.nonninz.robomodel.annotations.ExcludeByDefault;
-import com.nonninz.robomodel.annotations.HasMany;
 import com.nonninz.robomodel.annotations.Save;
 import com.nonninz.robomodel.annotations.Table;
 
@@ -109,7 +108,6 @@ public abstract class RoboModel {
             saved = saved || field.isAnnotationPresent(Save.class);
             saved = saved || !whitelist && Modifier.isPublic(field.getModifiers());
             saved = saved && !field.isAnnotationPresent(Exclude.class);
-            saved = saved && !field.isAnnotationPresent(HasMany.class);
 
             if (saved) {
                 savedFields.add(field);
@@ -190,10 +188,6 @@ public abstract class RoboModel {
                     final Object value = method.invoke(constants[0], type, string);
                     field.set(this, value);
                 }
-            } else if (field.isAnnotationPresent(HasMany.class)) {
-                // TODO: load children
-            } else if (field.isAnnotationPresent(BelongsTo.class)) {
-                // TODO: load parent????????
             } else {
                 // Try to de-json it (db column must be of type text)
                 try {
@@ -220,7 +214,8 @@ public abstract class RoboModel {
         }
     }
 
-    public void reload() throws InstanceNotFoundException {
+    @SuppressLint("DefaultLocale")
+	public void reload() throws InstanceNotFoundException {
         if (!isSaved()) {
             throw new IllegalStateException("This instance has not yet been saved.");
         }
@@ -288,13 +283,6 @@ public abstract class RoboModel {
                     final String str = (String) method.invoke(value);
                     cv.put(field.getName(), str);
                 }
-        } else if (field.isAnnotationPresent(BelongsTo.class)) {
-            RoboModel parent = (RoboModel) field.get(this);
-            if (parent != null) {
-                cv.put(field.getName(), parent.getId());
-            } else {
-                cv.putNull(field.getName());
-            }
         }
             else {
                 // Try to JSONify it (db column must be of type text)
@@ -357,25 +345,5 @@ public abstract class RoboModel {
     public String toJson() {
       Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
       return gson.toJson(this);
-    }
-
-    void deepSave(RoboModel parentModel) {
-        // There must be a corresponding BelongsTo field for parentModel
-        Field[] fields = getClass().getFields();
-        for (Field field: fields) {
-            BelongsTo belongsTo = field.getAnnotation(BelongsTo.class);
-            if (belongsTo != null && belongsTo.value().equals(parentModel.getClass())) {
-                // Set the reference to the parent
-                try {
-                    field.set(this, parentModel);
-                } catch (IllegalAccessException e) {
-                    // Can't happen
-                    throw new RuntimeException(e);
-                }
-                
-                save();
-                
-            }
-        }
     }
 }
