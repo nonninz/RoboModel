@@ -20,13 +20,14 @@ import static android.provider.BaseColumns._ID;
 import java.lang.reflect.Field;
 import java.util.List;
 
-import roboguice.util.Ln;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.DatabaseUtils;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
+
+import com.nonninz.robomodel.util.Ln;
 
 /**
  * 
