@@ -44,6 +44,12 @@ public class RoboModelCollection<T extends RoboModel> {
                         model.save();
                     }
                 }
+                if (f.getType().isArray()) {
+                    RoboModel[] list = (RoboModel[]) f.get(this);
+                    for (RoboModel model : list) {
+                        model.save();
+                    }
+                }
             } catch (IllegalAccessException e) {
                 Ln.d(e, "Error while accessing field %s", f.getName());
             }
@@ -58,6 +64,12 @@ public class RoboModelCollection<T extends RoboModel> {
                     @SuppressWarnings("unchecked")
                     Collection<? extends RoboModel> list = (Collection<? extends RoboModel>) f
                                     .get(this);
+                    for (RoboModel model : list) {
+                        model.setContext(context);
+                    }
+                }
+                if (f.getType().isArray()) {
+                    RoboModel[] list = (RoboModel[]) f.get(this);
                     for (RoboModel model : list) {
                         model.setContext(context);
                     }
