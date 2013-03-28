@@ -64,7 +64,7 @@ public abstract class RoboModel {
     private DatabaseManager mDatabaseManager;
     private final ObjectMapper mMapper = new ObjectMapper();
 
-    void setContext(Context context) {
+    protected void setContext(Context context) {
         mContext = context;
         mDatabaseManager = new DatabaseManager(context);
     }
