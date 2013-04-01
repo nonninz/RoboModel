@@ -30,6 +30,7 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nonninz.robomodel.exceptions.InstanceNotFoundException;
 import com.nonninz.robomodel.exceptions.JsonException;
+import com.nonninz.robomodel.util.Ln;
 
 /**
  * @author Francesco Donadon <francesco.donadon@gmail.com>
@@ -219,15 +220,14 @@ public class RoboManager<T extends RoboModel> {
     }
 
     private List<T> getRecords(long[] ids) {
-        try {
-            final List<T> result = new ArrayList<T>(ids.length);
-            for (final long id : ids) {
+        final List<T> result = new ArrayList<T>(ids.length);
+        for (final long id : ids) {
+            try {
                 result.add(find(id));
+            } catch (final InstanceNotFoundException e) {
+                Ln.w(e, "Record with id %d was deleted while being loaded", id);
             }
-            return result;
-        } catch (final InstanceNotFoundException e) {
-            // Should never happen
-            throw new RuntimeException(e);
         }
+        return result;
     }
 }
