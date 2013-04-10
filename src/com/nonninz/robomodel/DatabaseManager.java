@@ -22,6 +22,7 @@ import java.util.List;
 
 import android.content.Context;
 import android.database.Cursor;
+import android.database.CursorIndexOutOfBoundsException;
 import android.database.DatabaseUtils;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
@@ -145,6 +146,10 @@ class DatabaseManager {
 
                 // TODO: correct type?
             } catch (final SQLiteException e) {
+                // No such column
+                addColumn(tableName, field.getName(), getTypeForField(field), db);
+            } catch (final CursorIndexOutOfBoundsException e) {
+                // No such column
                 addColumn(tableName, field.getName(), getTypeForField(field), db);
             }
         }
