@@ -40,14 +40,18 @@ public class RoboModelCollection<T extends RoboModel> {
                     @SuppressWarnings("unchecked")
                     Collection<? extends RoboModel> list = (Collection<? extends RoboModel>) f
                                     .get(this);
-                    for (RoboModel model : list) {
-                        model.save();
+                    if (list != null) {
+                        for (RoboModel model : list) {
+                            model.save();
+                        }
                     }
                 }
                 if (f.getType().isArray()) {
                     RoboModel[] list = (RoboModel[]) f.get(this);
-                    for (RoboModel model : list) {
-                        model.save();
+                    if (list != null) {
+                        for (RoboModel model : list) {
+                            model.save();
+                        }
                     }
                 }
             } catch (IllegalAccessException e) {
@@ -64,14 +68,18 @@ public class RoboModelCollection<T extends RoboModel> {
                     @SuppressWarnings("unchecked")
                     Collection<? extends RoboModel> list = (Collection<? extends RoboModel>) f
                                     .get(this);
-                    for (RoboModel model : list) {
-                        model.setContext(context);
+                    if (list != null) {
+                        for (RoboModel model : list) {
+                            model.setContext(context);
+                        }
                     }
                 }
                 if (f.getType().isArray()) {
                     RoboModel[] list = (RoboModel[]) f.get(this);
-                    for (RoboModel model : list) {
-                        model.setContext(context);
+                    if (list != null) {
+                        for (RoboModel model : list) {
+                            model.setContext(context);
+                        }
                     }
                 }
             } catch (IllegalAccessException e) {
