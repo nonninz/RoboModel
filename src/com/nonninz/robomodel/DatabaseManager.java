@@ -33,9 +33,9 @@ import com.nonninz.robomodel.util.Ln;
 /**
  * 
  * DatabaseManager:
- * 1. Ensures the correct schema for the Database 
+ * 1. Ensures the correct schema for the Database
  * 2. Holds the database specific configuration
- *  
+ * 
  */
 class DatabaseManager {
     public static String where(long id) {
@@ -43,30 +43,30 @@ class DatabaseManager {
     }
 
     public static String getTypeForField(Field field) {
-      final Class<?> type = field.getType();
+        final Class<?> type = field.getType();
 
-      if (type == String.class) {
-          return "TEXT";
-      } else if (type == Boolean.TYPE) {
-          return "BOOLEAN";
-      } else if (type == Byte.TYPE) {
-          return "INTEGER";
-      } else if (type == Double.TYPE) {
-          return "REAL";
-      } else if (type == Float.TYPE) {
-          return "REAL";
-      } else if (type == Integer.TYPE) {
-          return "INTEGER";
-      } else if (type == Long.TYPE) {
-          return "INTEGER";
-      } else if (type == Short.TYPE) {
-          return "INTEGER";
-      } else if (type.isEnum()) {
-          return "TEXT";
-      }
-      else {
-          return "TEXT";
-      }
+        if (type == String.class) {
+            return "TEXT";
+        } else if (type == Boolean.TYPE) {
+            return "BOOLEAN";
+        } else if (type == Byte.TYPE) {
+            return "INTEGER";
+        } else if (type == Double.TYPE) {
+            return "REAL";
+        } else if (type == Float.TYPE) {
+            return "REAL";
+        } else if (type == Integer.TYPE) {
+            return "INTEGER";
+        } else if (type == Long.TYPE) {
+            return "INTEGER";
+        } else if (type == Short.TYPE) {
+            return "INTEGER";
+        } else if (type.isEnum()) {
+            return "TEXT";
+        }
+        else {
+            return "TEXT";
+        }
     }
 
     private static SQLiteDatabase sDatabase;
@@ -81,10 +81,10 @@ class DatabaseManager {
     }
 
     public String getDatabaseName() {
-      if (sDatabaseName == null) {
-          sDatabaseName = mContext.getPackageName();
-      }
-      return sDatabaseName;
+        if (sDatabaseName == null) {
+            sDatabaseName = mContext.getPackageName();
+        }
+        return sDatabaseName;
     }
 
     /**
@@ -123,7 +123,7 @@ class DatabaseManager {
      */
     void createOrPopulateTable(String tableName, List<Field> fields,
                     SQLiteDatabase db) {
-      
+
         Ln.d("Fixing table %s...", tableName);
 
         // Check if table exists
@@ -139,7 +139,8 @@ class DatabaseManager {
         for (final Field field : fields) {
             try {
                 // Get type of column
-                final Cursor typeCursor = db.rawQuery("select typeof (" + field.getName() + ") from "
+                final Cursor typeCursor = db.rawQuery("select typeof (" + field.getName()
+                                + ") from "
                                 + tableName, null);
                 typeCursor.moveToFirst();
                 final String type = typeCursor.getString(0);
@@ -189,7 +190,8 @@ class DatabaseManager {
 
     SQLiteDatabase openOrCreateDatabase(String databaseName) {
         if (sDatabase == null) {
-            sDatabase = mContext.getApplicationContext().openOrCreateDatabase(databaseName, Context.MODE_PRIVATE, null);
+            sDatabase = mContext.getApplicationContext().openOrCreateDatabase(databaseName,
+                            Context.MODE_PRIVATE, null);
         }
         return sDatabase;
     }
