@@ -33,8 +33,6 @@ import android.database.sqlite.SQLiteException;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nonninz.robomodel.annotations.Exclude;
@@ -106,6 +104,7 @@ public abstract class RoboModel {
             saved = false;
             saved = saved || field.isAnnotationPresent(Save.class); // If @Save is present, save it
             saved = saved || Modifier.isPublic(field.getModifiers()); // If it is public, save it
+            saved = saved && !Modifier.isStatic(field.getModifiers()); // If it is static, don't save it
             saved = saved && !field.isAnnotationPresent(Exclude.class); // If @Exclude, don't save it
 
             if (saved) {
