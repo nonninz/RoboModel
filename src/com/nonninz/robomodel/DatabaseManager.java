@@ -69,6 +69,7 @@ class DatabaseManager {
       }
     }
 
+    private static SQLiteDatabase sDatabase;
     private static String sDatabaseName;
     private final Context mContext;
 
@@ -179,16 +180,17 @@ class DatabaseManager {
     public void deleteAllRecords(String databaseName, String tableName) {
         final SQLiteDatabase db = openOrCreateDatabase(databaseName);
         db.delete(tableName, null, null);
-        db.close();
     }
 
     void deleteRecord(String databaseName, String tableName, long id) {
         final SQLiteDatabase db = openOrCreateDatabase(databaseName);
         db.delete(tableName, where(id), null);
-        db.close();
     }
 
     SQLiteDatabase openOrCreateDatabase(String databaseName) {
-        return mContext.openOrCreateDatabase(databaseName, Context.MODE_PRIVATE, null);
+        if (sDatabase == null) {
+            sDatabase = mContext.getApplicationContext().openOrCreateDatabase(databaseName, Context.MODE_PRIVATE, null);
+        }
+        return sDatabase;
     }
 }

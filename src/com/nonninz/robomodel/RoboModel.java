@@ -219,10 +219,8 @@ public abstract class RoboModel {
         if (query.moveToFirst()) {
             setFieldsWithQueryResult(query);
             query.close();
-            db.close();
         } else {
             query.close();
-            db.close();
             final String msg = String.format("No entry in database with id %d for model %s",
                             getId(),
                             getTableName());
@@ -245,8 +243,6 @@ public abstract class RoboModel {
         } catch (final SQLiteException ex) {
             mDatabaseManager.createOrPopulateTable(getTableName(), fields, database);
             mId = mDatabaseManager.insertOrUpdate(getTableName(), cv, mId, database);
-        } finally {
-            database.close();
         }
     }
 
