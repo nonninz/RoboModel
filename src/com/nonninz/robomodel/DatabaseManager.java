@@ -109,6 +109,12 @@ class DatabaseManager {
         }
     }
 
+    void dropTable(String tableName, SQLiteDatabase db) {
+        final StringBuilder sql = new StringBuilder("DROP TABLE IF EXISTS ").append(tableName).append(";");
+        Ln.d("Dropping table: %s", sql.toString());
+        db.execSQL(sql.toString());
+    }
+
     /**
      * Creates the table or populates it with missing fields
      * 

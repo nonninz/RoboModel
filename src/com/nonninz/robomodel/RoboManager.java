@@ -134,6 +134,11 @@ public class RoboManager<T extends RoboModel> {
         return newModel;
     }
 
+    public void dropTable() {
+        final SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
+        mDatabaseManager.dropTable(getTableName(), db);
+    }
+
     public T find(long id) throws InstanceNotFoundException {
         final T record = create();
         record.load(id);
