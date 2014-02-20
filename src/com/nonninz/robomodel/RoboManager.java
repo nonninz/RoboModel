@@ -18,6 +18,7 @@ package com.nonninz.robomodel;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import android.content.Context;
 import android.database.Cursor;
@@ -42,7 +43,7 @@ import com.nonninz.robomodel.util.Ln;
  *         - last()
  *         - find(id)
  *         - deleteAll()
- * @param <C>
+ * @param <T>
  * 
  */
 public class RoboManager<T extends RoboModel> {
@@ -54,7 +55,7 @@ public class RoboManager<T extends RoboModel> {
     private final RoboModel mSampleModel;
 
     /**
-     * @param context2
+     * @param context
      * @param klass
      */
     public static <TT extends RoboModel> RoboManager<TT> get(Context context, Class<TT> klass) {

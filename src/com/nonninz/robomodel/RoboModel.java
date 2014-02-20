@@ -37,6 +37,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nonninz.robomodel.annotations.Exclude;
 import com.nonninz.robomodel.annotations.Save;
+import com.nonninz.robomodel.exceptions.DatabaseNotUpToDateException;
 import com.nonninz.robomodel.exceptions.InstanceNotFoundException;
 import com.nonninz.robomodel.exceptions.JsonException;
 import com.nonninz.robomodel.util.Ln;
@@ -128,7 +129,7 @@ public abstract class RoboModel {
         reload();
     }
 
-    private void loadField(Field field, Cursor query) {
+    private void loadField(Field field, Cursor query) throws DatabaseNotUpToDateException {
         final Class<?> type = field.getType();
         final boolean wasAccessible = field.isAccessible();
         final int columnIndex = query.getColumnIndex(field.getName());
@@ -137,7 +138,7 @@ public abstract class RoboModel {
         /*
          * TODO: There is the potential of a problem here:
          * What happens if the developer changes the type of a field between releases?
-         * 
+         *
          * If he saves first, then the column type will be changed (In the future).
          * If he loads first, we don't know if an Exception will be thrown if the
          * types are incompatible, because it's undocumented in the Cursor documentation.
@@ -191,6 +192,9 @@ public abstract class RoboModel {
         } catch (final InvocationTargetException e) {
             // Should not happen
             throw new RuntimeException(e);
+        } catch (IllegalStateException e) {
+            // This is when there is no column in db, but there is in the model
+            throw new DatabaseNotUpToDateException(e);
         } finally {
             field.setAccessible(wasAccessible);
         }
@@ -203,7 +207,7 @@ public abstract class RoboModel {
         }
 
         // Retrieve current entry in the database
-        final SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
+        SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
         Cursor query;
 
         /*
@@ -217,13 +221,79 @@ public abstract class RoboModel {
         }
 
         if (query.moveToFirst()) {
-            setFieldsWithQueryResult(query);
+            try {
+                setFieldsWithQueryResult(query);
+            } catch (DatabaseNotUpToDateException e) {
+                Ln.w(e, "Updating table %s", mTableName);
+                query.close();
+
+                // Update table with new columns
+                mDatabaseManager.createOrPopulateTable(mTableName, getSavedFields(), db);
+                mDatabaseManager.closeDatabase();
+                db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
+
+                // Retry
+                try {
+                    query = db.query(getTableName(), null, where(mId), null, null, null, null);
+                    query.moveToFirst();
+                    setFieldsWithQueryResult(query);
+                } catch (DatabaseNotUpToDateException ee) {
+                    throw new RuntimeException("Could not repair database.", ee);
+                }
+            }
             query.close();
         } else {
             query.close();
             final String msg = String.format("No entry in database with id %d for model %s",
                             getId(),
                             getTableName());
+            throw new InstanceNotFoundException(msg);
+        }
+    }
+
+    void loadRecord(int position) throws InstanceNotFoundException {
+        // Retrieve current entry in the database
+        SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
+        Cursor query;
+
+        final String limit = String.format("%d,1", position);
+        try {
+            query = db.query(getTableName(), null, null, null, null, null, _ID, limit);
+        } catch (final SQLiteException e) {
+            mDatabaseManager.createOrPopulateTable(mTableName, getSavedFields(), db);
+            query = db.query(getTableName(), null, null, null, null, null, _ID, limit);
+        }
+
+        if (query.moveToFirst()) {
+            try {
+                setFieldsWithQueryResult(query);
+            } catch (DatabaseNotUpToDateException e) {
+                Ln.w(e, "Updating table %s", mTableName);
+                query.close();
+
+                // Update table with new columns
+                mDatabaseManager.createOrPopulateTable(mTableName, getSavedFields(), db);
+                mDatabaseManager.closeDatabase();
+                db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
+
+                // Retry
+                try {
+                    query = db.query(getTableName(), null, null, null, null, null, _ID, limit);
+                    query.moveToFirst();
+                    setFieldsWithQueryResult(query);
+                } catch (DatabaseNotUpToDateException ee) {
+                    throw new RuntimeException("Could not repair database.", ee);
+                }
+            }
+            // set ID
+            mId = query.getLong(query.getColumnIndex(_ID));
+
+            query.close();
+        } else {
+            query.close();
+            final String msg = String.format("No entry in database in position %d for model %s",
+                    position,
+                    getTableName());
             throw new InstanceNotFoundException(msg);
         }
     }
@@ -299,20 +369,26 @@ public abstract class RoboModel {
         }
     }
 
-    private void setFieldsWithQueryResult(Cursor query) {
+    private void setFieldsWithQueryResult(Cursor query) throws DatabaseNotUpToDateException {
         // Iterate over the columns and auto-assign values on corresponding fields
-        final String[] columns = query.getColumnNames();
-        for (final String column : columns) {
-            // Skip id column
-            if (column.equals(_ID)) {
-                continue;
-            }
-
-            final List<Field> fields = getSavedFields();
-            for (final Field field : fields) {
-                loadField(field, query);
-            }
+        final List<Field> fields = getSavedFields();
+        for (final Field field : fields) {
+            loadField(field, query);
         }
+
+//        final String[] columns = query.getColumnNames();
+//
+//        for (final String column : columns) {
+//            // Skip id column
+//            if (column.equals(_ID)) {
+//                continue;
+//            }
+//
+//            final List<Field> fields = getSavedFields();
+//            for (final Field field : fields) {
+//                loadField(field, query);
+//            }
+//        }
     }
 
     @Override

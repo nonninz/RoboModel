@@ -201,4 +201,11 @@ class DatabaseManager {
         }
         return sDatabase;
     }
+
+    void closeDatabase() {
+        if (sDatabase != null) {
+            sDatabase.close();
+            sDatabase = null;
+        }
+    }
 }
