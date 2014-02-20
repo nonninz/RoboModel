@@ -74,6 +74,12 @@ public class RoboManager<T extends RoboModel> {
         return getRecords(ids);
     }
 
+    public int count() {
+        //TODO: Direct COUNT() query
+        final long[] ids = getSelectedModelIds(null, null, null, null, null);
+        return ids.length;
+    }
+
     public T last() throws InstanceNotFoundException {
         final T record = create();
         final long id = getLastId();
@@ -173,7 +179,7 @@ public class RoboManager<T extends RoboModel> {
         }
     }
 
-    private long[] getSelectedModelIds(String selection, String[] selectionArgs, String groupBy,
+    public long[] getSelectedModelIds(String selection, String[] selectionArgs, String groupBy,
                     String having, String orderBy) {
         final SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
 
