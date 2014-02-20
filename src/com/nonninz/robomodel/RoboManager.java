@@ -152,6 +152,12 @@ public class RoboManager<T extends RoboModel> {
         return record;
     }
 
+    public T loadRecord(int position) throws InstanceNotFoundException {
+        final T model = create();
+        model.loadRecord(position);
+        return model;
+    }
+
     public String getDatabaseName() {
         return mDatabaseManager.getDatabaseName();
     }
@@ -215,6 +221,17 @@ public class RoboManager<T extends RoboModel> {
 
     private String getTableName() {
         return mSampleModel.getTableName();
+    }
+
+    public T findByUniqueKey(String columnName, long key) throws InstanceNotFoundException {
+        final List<T> found = where(String.format(Locale.US, "%s = %d", columnName, key));
+        if (found.size() > 0) {
+            return found.get(0);
+        } else {
+            final String msg = String.format("No record for table %s with column %s = %d",
+                    mSampleModel.getTableName(), columnName, key);
+            throw new InstanceNotFoundException(msg);
+        }
     }
 
     public List<T> where(String selection) {
