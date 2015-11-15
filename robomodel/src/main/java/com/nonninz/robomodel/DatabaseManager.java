@@ -19,6 +19,7 @@ import static android.provider.BaseColumns._ID;
 
 import java.lang.reflect.Field;
 import java.util.List;
+import java.util.Map;
 
 import android.content.Context;
 import android.database.Cursor;
@@ -28,6 +29,7 @@ import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 
+import com.nonninz.robomodel.util.DbUtils;
 import com.nonninz.robomodel.util.Ln;
 
 /**
@@ -142,23 +144,13 @@ class DatabaseManager {
         }
 
         // Otherwise, check if all fields exist
+        final Map<String, String> columns = DbUtils.getTableColumns(tableName, db);
         for (final Field field : fields) {
-            try {
-                // Get type of column
-                final Cursor typeCursor = db.rawQuery("select typeof (" + field.getName()
-                                + ") from "
-                                + tableName, null);
-                typeCursor.moveToFirst();
-                final String type = typeCursor.getString(0);
-                Ln.v("Type of %s is %s", field.getName(), type);
-
-                // TODO: correct type?
-            } catch (final SQLiteException e) {
-                // No such column
-                addColumn(tableName, field.getName(), getTypeForField(field), db);
-            } catch (final CursorIndexOutOfBoundsException e) {
-                // No such column
-                addColumn(tableName, field.getName(), getTypeForField(field), db);
+            final String columnName = field.getName();
+            if (columns.containsKey(columnName)) {
+                // TODO: check if type is right
+            } else {
+                addColumn(tableName, columnName, getTypeForField(field), db);
             }
         }
     }
