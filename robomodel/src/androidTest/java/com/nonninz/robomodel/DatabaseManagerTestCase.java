@@ -8,17 +8,26 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.test.AndroidTestCase;
 
+import com.nonninz.robomodel.util.Ln;
+
 public class DatabaseManagerTestCase extends AndroidTestCase {
 
     private final String TEST_DB_NAME = "DatabaseManagerTestCaseDB";
     private DatabaseManager mDatabaseManager;
+    private SQLiteDatabase mDatabase;
 
     @Override
     protected void setUp() throws Exception {
-        super.setUp();
-
         getContext().deleteDatabase(TEST_DB_NAME);
+
         mDatabaseManager = new DatabaseManager(getContext());
+        mDatabase = mDatabaseManager.openOrCreateDatabase(TEST_DB_NAME);
+    }
+
+    @Override
+    protected void tearDown() throws Exception {
+        mDatabaseManager.closeDatabase();
+        mDatabase = null;
     }
 
     public void testWhereConstruct() {
@@ -34,12 +43,11 @@ public class DatabaseManagerTestCase extends AndroidTestCase {
         fields.add(model.getClass().getDeclaredField("booleanField"));
         fields.add(model.getClass().getDeclaredField("intField"));
 
-        SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(TEST_DB_NAME);
-        mDatabaseManager.createOrPopulateTable("Test", fields, db);
+        mDatabaseManager.createOrPopulateTable("Test", fields, mDatabase);
 
         // There should be a table "Test", created with correct SQL 
         String sql = null;
-        Cursor tablesCursor = db.rawQuery("SELECT * FROM SQLITE_MASTER", null);
+        Cursor tablesCursor = mDatabase.rawQuery("SELECT * FROM SQLITE_MASTER", null);
         while (tablesCursor.moveToNext()) {
             String tableName = tablesCursor.getString(tablesCursor.getColumnIndex("name"));
             if (tableName.equals("Test")) {
@@ -55,10 +63,10 @@ public class DatabaseManagerTestCase extends AndroidTestCase {
 
         // Table Columns should be added after we alter the fields collection
         fields.add(model.getClass().getDeclaredField("doubleField"));
-        mDatabaseManager.createOrPopulateTable("Test", fields, db);
+        mDatabaseManager.createOrPopulateTable("Test", fields, mDatabase);
 
         sql = null;
-        tablesCursor = db.rawQuery("SELECT * FROM SQLITE_MASTER", null);
+        tablesCursor = mDatabase.rawQuery("SELECT * FROM SQLITE_MASTER", null);
         while (tablesCursor.moveToNext()) {
             String tableName = tablesCursor.getString(tablesCursor.getColumnIndex("name"));
             if (tableName.equals("Test")) {
@@ -75,29 +83,27 @@ public class DatabaseManagerTestCase extends AndroidTestCase {
     }
 
     public void testDeleteAll() throws SecurityException, NoSuchFieldException {
-        SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(TEST_DB_NAME);
-        db.execSQL("CREATE TABLE Test (stringField TEXT, _id integer primary key autoincrement)");
-        db.execSQL("INSERT INTO Test (stringField) VALUES ('Test1')");
-        db.execSQL("INSERT INTO Test (stringField) VALUES ('Test2')");
-        db.execSQL("INSERT INTO Test (stringField) VALUES ('Test2')");
+        mDatabase.execSQL("CREATE TABLE Test (stringField TEXT, _id integer primary key autoincrement)");
+        mDatabase.execSQL("INSERT INTO Test (stringField) VALUES ('Test1')");
+        mDatabase.execSQL("INSERT INTO Test (stringField) VALUES ('Test2')");
+        mDatabase.execSQL("INSERT INTO Test (stringField) VALUES ('Test2')");
 
-        Cursor beforeCursor = db.rawQuery("SELECT * FROM Test", null);
+        Cursor beforeCursor = mDatabase.rawQuery("SELECT * FROM Test", null);
         assertEquals(2, beforeCursor.getColumnCount());
 
         mDatabaseManager.deleteAllRecords(TEST_DB_NAME, "Test");
 
-        Cursor afterCursor = db.rawQuery("SELECT * FROM Test", null);
+        Cursor afterCursor = mDatabase.rawQuery("SELECT * FROM Test", null);
         assertEquals(0, afterCursor.getCount());
     }
 
     public void testDeleteRecord() {
-        SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(TEST_DB_NAME);
-        db.execSQL("CREATE TABLE Test (stringField TEXT, _id integer primary key autoincrement)");
-        db.execSQL("INSERT INTO Test (stringField) VALUES ('Test1')");
-        db.execSQL("INSERT INTO Test (stringField) VALUES ('Test2')");
+        mDatabase.execSQL("CREATE TABLE Test (stringField TEXT, _id integer primary key autoincrement)");
+        mDatabase.execSQL("INSERT INTO Test (stringField) VALUES ('Test1')");
+        mDatabase.execSQL("INSERT INTO Test (stringField) VALUES ('Test2')");
 
         mDatabaseManager.deleteRecord(TEST_DB_NAME, "Test", 1);
-        Cursor afterCursor = db.rawQuery("SELECT * FROM Test", null);
+        Cursor afterCursor = mDatabase.rawQuery("SELECT * FROM Test", null);
         assertEquals(1, afterCursor.getCount());
     }
 
