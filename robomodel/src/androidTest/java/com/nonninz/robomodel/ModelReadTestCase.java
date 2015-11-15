@@ -3,8 +3,6 @@ package com.nonninz.robomodel;
 import android.content.Context;
 import android.test.AndroidTestCase;
 
-import com.nonninz.robomodel.RoboManager;
-import com.nonninz.robomodel.RoboModel;
 import com.nonninz.robomodel.TestModel.Answer;
 
 public class ModelReadTestCase extends AndroidTestCase {
