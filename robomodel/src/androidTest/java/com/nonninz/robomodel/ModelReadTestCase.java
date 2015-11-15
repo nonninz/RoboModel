@@ -7,19 +7,22 @@ import com.nonninz.robomodel.TestModel.Answer;
 
 public class ModelReadTestCase extends AndroidTestCase {
     private TestModel mModel;
+    private RoboManager<TestModel> mManager;
 
     @Override
     protected void setUp() throws Exception {
-        super.setUp();
-        
         final Context context = getContext();
-        final RoboManager<TestModel> manager = RoboManager.get(context, TestModel.class);
+        mManager = RoboManager.get(context, TestModel.class);
 
-        context.deleteDatabase(manager.getDatabaseName());
-
-        final RoboModel model = manager.create();
+        final RoboModel model = mManager.create();
         model.save();
-        mModel = manager.find(model.getId());
+        mModel = mManager.find(model.getId());
+    }
+
+    @Override
+    protected void tearDown() throws Exception {
+        mManager.closeDatabase();
+        getContext().deleteDatabase(mManager.getDatabaseName());
     }
 
     public void testBooleanSavedCorrectly() {
