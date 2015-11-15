@@ -69,10 +69,10 @@ public class ManagerTestCase extends AndroidTestCase {
     public void testLast() throws InstanceNotFoundException  {
         mManager.create().save();
         TestModel expected = mManager.create();
-        expected.springField = "Hello there!";
+        expected.stringField = "Hello there!";
         expected.save();
 
-        assertEquals("Hello there!", mManager.last().springField);
+        assertEquals("Hello there!", mManager.last().stringField);
     }
     
     public void testClear() {
@@ -89,7 +89,7 @@ public class ManagerTestCase extends AndroidTestCase {
     
     public void testFind() throws InstanceNotFoundException {
         final TestModel model = mManager.create();
-        model.bowlFish = false;
+        model.booleanField = false;
         model.byteField = 23;
         model.doubleField = 56;
         model.enumOne = Answer.UNIVERSE;
@@ -99,12 +99,12 @@ public class ManagerTestCase extends AndroidTestCase {
         model.intField = 12;
         model.longField = 89;
         model.shortField = 9;
-        model.springField = "Antani";
+        model.stringField = "Antani";
         model.save();
         final long id = model.getId();
 
         final TestModel found = mManager.find(id);
-        assertEquals(model.bowlFish, found.bowlFish);
+        assertEquals(model.booleanField, found.booleanField);
         assertEquals(model.byteField, found.byteField);
         assertEquals(model.doubleField, found.doubleField);
         assertEquals(model.enumOne, found.enumOne);
@@ -114,17 +114,17 @@ public class ManagerTestCase extends AndroidTestCase {
         assertEquals(model.intField, found.intField);
         assertEquals(model.longField, found.longField);
         assertEquals(model.shortField, found.shortField);
-        assertEquals(model.springField, found.springField);
+        assertEquals(model.stringField, found.stringField);
     }
 
     public void testWhere1() {
         mManager.create().save();
         mManager.create().save();
         final TestModel model = mManager.create();
-        model.springField = "Tapioca";
+        model.stringField = "Tapioca";
         model.save();
 
-        final List<TestModel> foundModels = mManager.where("springField = 'Tapioca'");
+        final List<TestModel> foundModels = mManager.where("stringField = 'Tapioca'");
         assertEquals(1, foundModels.size());
         assertEquals(model.getId(), foundModels.get(0).getId());
     }
@@ -133,10 +133,10 @@ public class ManagerTestCase extends AndroidTestCase {
         mManager.create().save();
         mManager.create().save();
         final TestModel model = mManager.create();
-        model.springField = "Tapioca";
+        model.stringField = "Tapioca";
         model.save();
 
-        final List<TestModel> foundModels = mManager.where("springField = ?",
+        final List<TestModel> foundModels = mManager.where("stringField = ?",
                         new String[] { "Tapioca" });
         assertEquals(1, foundModels.size());
         assertEquals(model.getId(), foundModels.get(0).getId());
@@ -150,14 +150,14 @@ public class ManagerTestCase extends AndroidTestCase {
 
         TestModel actual = mManager.create(json);
         
-        assertEquals(expected.bowlFish, actual.bowlFish);
+        assertEquals(expected.booleanField, actual.booleanField);
         assertEquals(expected.byteField, actual.byteField);
         assertEquals(expected.doubleField, actual.doubleField);
         assertEquals(expected.floatField, actual.floatField);
         assertEquals(expected.intField, actual.intField);
         assertEquals(expected.longField, actual.longField);
         assertEquals(expected.shortField, actual.shortField);
-        assertEquals(expected.springField, actual.springField);
+        assertEquals(expected.stringField, actual.stringField);
     }
 
 }

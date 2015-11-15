@@ -120,7 +120,7 @@ class DatabaseManager {
      * 
      * @param tableName
      *            The name of the table
-     * @param values
+     * @param fields
      *            The columns of the table
      * @param db
      *            The database where the table is situated
@@ -165,9 +165,7 @@ class DatabaseManager {
 
     /**
      * @param tableName
-     * @param values
      * @param db
-     * @return
      */
     private void createTable(String tableName, List<Field> fields, SQLiteDatabase db) {
         final StringBuilder sql = new StringBuilder("CREATE TABLE ").append(tableName).append(" (");

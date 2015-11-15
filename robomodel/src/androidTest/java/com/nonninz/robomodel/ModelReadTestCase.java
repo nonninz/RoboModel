@@ -23,7 +23,7 @@ public class ModelReadTestCase extends AndroidTestCase {
     }
 
     public void testBooleanSavedCorrectly() {
-        assertEquals(true, mModel.bowlFish);
+        assertEquals(true, mModel.booleanField);
     }
 
     public void testByteSavedCorrectly() {
@@ -57,7 +57,7 @@ public class ModelReadTestCase extends AndroidTestCase {
     }
 
     public void testStringSavedCorrectly() {
-        assertEquals("BTW thanks for all the fish!", mModel.springField);
+        assertEquals("BTW thanks for all the fish!", mModel.stringField);
     }
 
 }

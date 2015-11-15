@@ -23,7 +23,7 @@ public class ModelTestCase extends AndroidTestCase {
         TestModel testModel = new TestModel();
         testModel.setContext(getContext());
         getContext().deleteDatabase(testModel.getDatabaseName());
-        testModel.springField = "Hello!";
+        testModel.stringField = "Hello!";
         
         testModel.save();
 
@@ -32,7 +32,7 @@ public class ModelTestCase extends AndroidTestCase {
         assertEquals(1, cursor.getCount());
 
         cursor.moveToFirst();
-        assertEquals("Hello!", cursor.getString(cursor.getColumnIndex("springField")));
+        assertEquals("Hello!", cursor.getString(cursor.getColumnIndex("stringField")));
     }
 
     public void testSaveSeveralModels() {
@@ -94,12 +94,12 @@ public class ModelTestCase extends AndroidTestCase {
         model.save();
         
         TestModel loaded = mManager.last();
-        loaded.springField = "Modified";
+        loaded.stringField = "Modified";
         
         loaded.save();
         model.reload();
         
-        assertEquals("Modified", model.springField);
+        assertEquals("Modified", model.stringField);
     }
     
     public void testToJson() {

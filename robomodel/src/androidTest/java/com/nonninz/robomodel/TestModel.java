@@ -1,16 +1,14 @@
 package com.nonninz.robomodel;
 
-import android.content.Context;
-
 public class TestModel extends RoboModel {
 
     public enum Answer {
         LIFE, UNIVERSE, EVERYTHING
     }
 
-    public String springField = "BTW thanks for all the fish!";;
+    public String stringField = "BTW thanks for all the fish!";;
 
-    public boolean bowlFish = true;
+    public boolean booleanField = true;
     public byte byteField = 42;
     public short shortField = 4242;
     public int intField = 424242;

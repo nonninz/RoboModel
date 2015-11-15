@@ -30,8 +30,8 @@ public class DatabaseManagerTestCase extends AndroidTestCase {
         TestModel model = new TestModel();
         model.setContext(mContext);
 
-        fields.add(model.getClass().getDeclaredField("springField"));
-        fields.add(model.getClass().getDeclaredField("bowlFish"));
+        fields.add(model.getClass().getDeclaredField("stringField"));
+        fields.add(model.getClass().getDeclaredField("booleanField"));
         fields.add(model.getClass().getDeclaredField("intField"));
 
         SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(TEST_DB_NAME);
@@ -48,8 +48,8 @@ public class DatabaseManagerTestCase extends AndroidTestCase {
             }
         }
         assertEquals("CREATE TABLE Test (" +
-                        "springField TEXT, " +
-                        "bowlFish BOOLEAN, " +
+                        "stringField TEXT, " +
+                        "booleanField BOOLEAN, " +
                         "intField INTEGER, " +
                         "_id integer primary key autoincrement)", sql);
 
@@ -67,8 +67,8 @@ public class DatabaseManagerTestCase extends AndroidTestCase {
             }
         }
         assertEquals("CREATE TABLE Test (" +
-                        "springField TEXT, " +
-                        "bowlFish BOOLEAN, " +
+                        "stringField TEXT, " +
+                        "booleanField BOOLEAN, " +
                         "intField INTEGER, " +
                         "_id integer primary key autoincrement, " +
                         "doubleField REAL)", sql);
@@ -76,10 +76,10 @@ public class DatabaseManagerTestCase extends AndroidTestCase {
 
     public void testDeleteAll() throws SecurityException, NoSuchFieldException {
         SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(TEST_DB_NAME);
-        db.execSQL("CREATE TABLE Test (springField TEXT, _id integer primary key autoincrement)");
-        db.execSQL("INSERT INTO Test (springField) VALUES ('Test1')");
-        db.execSQL("INSERT INTO Test (springField) VALUES ('Test2')");
-        db.execSQL("INSERT INTO Test (springField) VALUES ('Test2')");
+        db.execSQL("CREATE TABLE Test (stringField TEXT, _id integer primary key autoincrement)");
+        db.execSQL("INSERT INTO Test (stringField) VALUES ('Test1')");
+        db.execSQL("INSERT INTO Test (stringField) VALUES ('Test2')");
+        db.execSQL("INSERT INTO Test (stringField) VALUES ('Test2')");
 
         Cursor beforeCursor = db.rawQuery("SELECT * FROM Test", null);
         assertEquals(2, beforeCursor.getColumnCount());
@@ -92,9 +92,9 @@ public class DatabaseManagerTestCase extends AndroidTestCase {
 
     public void testDeleteRecord() {
         SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(TEST_DB_NAME);
-        db.execSQL("CREATE TABLE Test (springField TEXT, _id integer primary key autoincrement)");
-        db.execSQL("INSERT INTO Test (springField) VALUES ('Test1')");
-        db.execSQL("INSERT INTO Test (springField) VALUES ('Test2')");
+        db.execSQL("CREATE TABLE Test (stringField TEXT, _id integer primary key autoincrement)");
+        db.execSQL("INSERT INTO Test (stringField) VALUES ('Test1')");
+        db.execSQL("INSERT INTO Test (stringField) VALUES ('Test2')");
 
         mDatabaseManager.deleteRecord(TEST_DB_NAME, "Test", 1);
         Cursor afterCursor = db.rawQuery("SELECT * FROM Test", null);
