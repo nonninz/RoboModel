@@ -14,10 +14,12 @@ public class ManagerTestCase extends AndroidTestCase {
 
     @Override
     protected void setUp() throws Exception {
-        super.setUp();
-
         mManager = RoboManager.get(getContext(), TestModel.class);
-        
+    }
+
+    @Override
+    protected void tearDown() throws Exception {
+        mManager.closeDatabase();
         getContext().deleteDatabase(mManager.getDatabaseName());
     }
 

@@ -259,4 +259,8 @@ public class RoboManager<T extends RoboModel> {
         }
         return result;
     }
+
+    public void closeDatabase() {
+        mDatabaseManager.closeDatabase();
+    }
 }
