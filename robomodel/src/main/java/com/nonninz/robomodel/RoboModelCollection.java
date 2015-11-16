@@ -36,7 +36,7 @@ public class RoboModelCollection<T extends RoboModel> {
         Field[] fields = getClass().getFields();
         for (Field f : fields) {
             try {
-                if (f.getType().isAssignableFrom(Collection.class)) {
+                if (Collection.class.isAssignableFrom(f.getType())) {
                     @SuppressWarnings("unchecked")
                     Collection<? extends RoboModel> list = (Collection<? extends RoboModel>) f
                                     .get(this);
@@ -64,7 +64,7 @@ public class RoboModelCollection<T extends RoboModel> {
         Field[] fields = getClass().getFields();
         for (Field f : fields) {
             try {
-                if (f.getType().isAssignableFrom(Collection.class)) {
+                if (Collection.class.isAssignableFrom(f.getType())) {
                     @SuppressWarnings("unchecked")
                     Collection<? extends RoboModel> list = (Collection<? extends RoboModel>) f
                                     .get(this);
