@@ -64,13 +64,27 @@ public abstract class RoboModel {
 
     protected RoboModel() {}
 
-    protected Context getContext() {
-        return mContext;
-    }
+    @Override
+    public String toString() {
+        final List<Field> fields = getSavedFields();
 
-    protected void setContext(Context context) {
-        mContext = context;
-        mDatabaseManager = new DatabaseManager(context);
+        final StringBuilder b = new StringBuilder();
+        b.append(getTableName() + " {_id: " + getId() + ", ");
+        String fieldName;
+        for (final Field f : fields) {
+            fieldName = f.getName();
+            final boolean accessible = f.isAccessible();
+            f.setAccessible(true);
+            try {
+                b.append(fieldName + ": " + f.get(this) + ", ");
+            } catch (final IllegalAccessException e) {
+                b.append(fieldName + ": (INACCESSIBLE), ");
+            }
+            f.setAccessible(accessible);
+        }
+        b.append("}");
+
+        return b.toString();
     }
 
     public void delete() {
@@ -85,15 +99,98 @@ public abstract class RoboModel {
         return mDatabaseManager.getDatabaseName();
     }
 
-    String getTableName() {
-        if (mTableName == null) {
-            mTableName = mClass.getSimpleName();
-        }
-        return mTableName;
-    }
-
     public long getId() {
         return mId;
+    }
+
+    public boolean isSaved() {
+        return mId != UNSAVED_MODEL_ID;
+    }
+
+    @SuppressLint("DefaultLocale")
+    public void reload() throws InstanceNotFoundException {
+        if (!isSaved()) {
+            throw new IllegalStateException("This instance has not yet been saved.");
+        }
+
+        // Retrieve current entry in the database
+        SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
+        Cursor query;
+
+        /*
+         * Try to query the table. If the Table doesn't exist, fix the DB and re-run the query.
+         */
+        try {
+            query = db.query(getTableName(), null, where(mId), null, null, null, null);
+        } catch (final SQLiteException e) {
+            mDatabaseManager.createOrPopulateTable(mTableName, getSavedFields(), db);
+            query = db.query(getTableName(), null, where(mId), null, null, null, null);
+        }
+
+        if (query.moveToFirst()) {
+            try {
+                setFieldsWithQueryResult(query);
+            } catch (DatabaseNotUpToDateException e) {
+                Ln.w(e, "Updating table %s", mTableName);
+                query.close();
+
+                // Update table with new columns
+                mDatabaseManager.createOrPopulateTable(mTableName, getSavedFields(), db);
+                mDatabaseManager.closeDatabase();
+                db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
+
+                // Retry
+                try {
+                    query = db.query(getTableName(), null, where(mId), null, null, null, null);
+                    query.moveToFirst();
+                    setFieldsWithQueryResult(query);
+                } catch (DatabaseNotUpToDateException ee) {
+                    throw new RuntimeException("Could not repair database.", ee);
+                }
+            }
+            query.close();
+        } else {
+            query.close();
+            final String msg = String.format("No entry in database with id %d for model %s",
+                            getId(),
+                            getTableName());
+            throw new InstanceNotFoundException(msg);
+        }
+    }
+
+    public void save() {
+        final SQLiteDatabase database = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
+
+        List<Field> fields = getSavedFields();
+        final TypedContentValues cv = new TypedContentValues(fields.size());
+        for (final Field field : fields) {
+            saveField(field, cv);
+        }
+
+        // First try to save it. Then deal with errors (like table/field not existing);
+        try {
+            mId = mDatabaseManager.insertOrUpdate(getTableName(), cv, mId, database);
+        } catch (final SQLiteException ex) {
+            mDatabaseManager.createOrPopulateTable(getTableName(), fields, database);
+            mId = mDatabaseManager.insertOrUpdate(getTableName(), cv, mId, database);
+        }
+    }
+
+    public String toJson() {
+        try {
+            return mMapper.writeValueAsString(this);
+        } catch (JsonProcessingException e) {
+            throw new JsonException(e);
+        }
+    }
+
+    protected Context getContext() {
+        return mContext;
+    }
+
+    protected void setContext(Context context) {
+        mContext = context;
+        mDatabaseManager = new DatabaseManager(context);
     }
 
     List<Field> getSavedFields() {
@@ -119,8 +216,11 @@ public abstract class RoboModel {
         return mSavedFields;
     }
 
-    public boolean isSaved() {
-        return mId != UNSAVED_MODEL_ID;
+    String getTableName() {
+        if (mTableName == null) {
+            mTableName = mClass.getSimpleName();
+        }
+        return mTableName;
     }
 
     void load(long id) throws InstanceNotFoundException {
@@ -203,57 +303,6 @@ public abstract class RoboModel {
         }
     }
 
-    @SuppressLint("DefaultLocale")
-    public void reload() throws InstanceNotFoundException {
-        if (!isSaved()) {
-            throw new IllegalStateException("This instance has not yet been saved.");
-        }
-
-        // Retrieve current entry in the database
-        SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
-        Cursor query;
-
-        /*
-         * Try to query the table. If the Table doesn't exist, fix the DB and re-run the query.
-         */
-        try {
-            query = db.query(getTableName(), null, where(mId), null, null, null, null);
-        } catch (final SQLiteException e) {
-            mDatabaseManager.createOrPopulateTable(mTableName, getSavedFields(), db);
-            query = db.query(getTableName(), null, where(mId), null, null, null, null);
-        }
-
-        if (query.moveToFirst()) {
-            try {
-                setFieldsWithQueryResult(query);
-            } catch (DatabaseNotUpToDateException e) {
-                Ln.w(e, "Updating table %s", mTableName);
-                query.close();
-
-                // Update table with new columns
-                mDatabaseManager.createOrPopulateTable(mTableName, getSavedFields(), db);
-                mDatabaseManager.closeDatabase();
-                db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
-
-                // Retry
-                try {
-                    query = db.query(getTableName(), null, where(mId), null, null, null, null);
-                    query.moveToFirst();
-                    setFieldsWithQueryResult(query);
-                } catch (DatabaseNotUpToDateException ee) {
-                    throw new RuntimeException("Could not repair database.", ee);
-                }
-            }
-            query.close();
-        } else {
-            query.close();
-            final String msg = String.format("No entry in database with id %d for model %s",
-                            getId(),
-                            getTableName());
-            throw new InstanceNotFoundException(msg);
-        }
-    }
-
     void loadRecord(int position) throws InstanceNotFoundException {
         // Retrieve current entry in the database
         SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
@@ -298,24 +347,6 @@ public abstract class RoboModel {
                     position,
                     getTableName());
             throw new InstanceNotFoundException(msg);
-        }
-    }
-
-    public void save() {
-        final SQLiteDatabase database = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
-
-        List<Field> fields = getSavedFields();
-        final TypedContentValues cv = new TypedContentValues(fields.size());
-        for (final Field field : fields) {
-            saveField(field, cv);
-        }
-
-        // First try to save it. Then deal with errors (like table/field not existing);
-        try {
-            mId = mDatabaseManager.insertOrUpdate(getTableName(), cv, mId, database);
-        } catch (final SQLiteException ex) {
-            mDatabaseManager.createOrPopulateTable(getTableName(), fields, database);
-            mId = mDatabaseManager.insertOrUpdate(getTableName(), cv, mId, database);
         }
     }
 
@@ -392,36 +423,5 @@ public abstract class RoboModel {
 //                loadField(field, query);
 //            }
 //        }
-    }
-
-    @Override
-    public String toString() {
-        final List<Field> fields = getSavedFields();
-
-        final StringBuilder b = new StringBuilder();
-        b.append(getTableName() + " {id: " + getId() + ", ");
-        String fieldName;
-        for (final Field f : fields) {
-            fieldName = f.getName();
-            final boolean accessible = f.isAccessible();
-            f.setAccessible(true);
-            try {
-                b.append(fieldName + ": " + f.get(this) + ", ");
-            } catch (final IllegalAccessException e) {
-                b.append(fieldName + ": (INACCESSIBLE), ");
-            }
-            f.setAccessible(accessible);
-        }
-        b.append("}");
-
-        return b.toString();
-    }
-
-    public String toJson() {
-        try {
-            return mMapper.writeValueAsString(this);
-        } catch (JsonProcessingException e) {
-            throw new JsonException(e);
-        }
     }
 }

@@ -22,12 +22,54 @@ public class ModelTestCase extends AndroidTestCase {
         getContext().deleteDatabase(mManager.getDatabaseName());
     }
 
+    public void testDelete() throws InstanceNotFoundException {
+        final TestModel model = mManager.create();
+        model.save();
+        final long id = model.getId();
+
+        assertEquals(1, mManager.count());
+        assertEquals(id, mManager.find(id).getId());
+
+        model.delete();
+
+        assertEquals(0, mManager.count());
+
+        Exception e = null;
+        try {
+            mManager.find(id);
+        } catch (InstanceNotFoundException ex) {
+            e = ex;
+        }
+        assertEquals(e.getClass(), InstanceNotFoundException.class);
+    }
+
+    public void testIsSaved() {
+        final TestModel model = mManager.create();
+
+        assertEquals(model.isSaved(), false);
+        model.save();
+        assertEquals(model.isSaved(), true);
+    }
+
+    public void testReload() throws InstanceNotFoundException {
+        TestModel model = mManager.create();
+        model.save();
+
+        TestModel loaded = mManager.last();
+        loaded.stringField = "Modified";
+
+        loaded.save();
+        model.reload();
+
+        assertEquals("Modified", model.stringField);
+    }
+
     public void testSaveModel() {
         TestModel testModel = new TestModel();
         testModel.setContext(getContext());
         getContext().deleteDatabase(testModel.getDatabaseName());
         testModel.stringField = "Hello!";
-        
+
         testModel.save();
 
         SQLiteDatabase db = mContext.openOrCreateDatabase(testModel.getDatabaseName(), Context.MODE_PRIVATE, null);;
@@ -36,19 +78,6 @@ public class ModelTestCase extends AndroidTestCase {
 
         cursor.moveToFirst();
         assertEquals("Hello!", cursor.getString(cursor.getColumnIndex("stringField")));
-    }
-
-    public void testSaveSeveralModels() {
-//        RoboManager<ParentTestModel> parentManager = RoboManager.get(getContext(), ParentTestModel.class);
-//
-//        parentManager.create().save();
-//        parentManager.create().save();
-        mManager.create().save();
-        mManager.create().save();
-        mManager.create().save();
-        
-//        assertEquals(2, parentManager.all().size());
-        assertEquals(3, mManager.all().size());
     }
     
 //    public void testSaveTree() {
@@ -92,17 +121,17 @@ public class ModelTestCase extends AndroidTestCase {
 //        }
 //    }
     
-    public void testReload() throws InstanceNotFoundException {
-        TestModel model = mManager.create();
-        model.save();
-        
-        TestModel loaded = mManager.last();
-        loaded.stringField = "Modified";
-        
-        loaded.save();
-        model.reload();
-        
-        assertEquals("Modified", model.stringField);
+    public void testSaveSeveralModels() {
+//        RoboManager<ParentTestModel> parentManager = RoboManager.get(getContext(), ParentTestModel.class);
+//
+//        parentManager.create().save();
+//        parentManager.create().save();
+        mManager.create().save();
+        mManager.create().save();
+        mManager.create().save();
+
+//        assertEquals(2, parentManager.all().size());
+        assertEquals(3, mManager.all().size());
     }
     
     public void testToJson() {
