@@ -1,12 +1,12 @@
 /**
  * Copyright 2012 Francesco Donadon
- * 
+ * <p/>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ * <p/>
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ * <p/>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 package com.nonninz.robomodel;
-
-import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
 
 import android.content.Context;
 import android.database.Cursor;
@@ -33,9 +28,14 @@ import com.nonninz.robomodel.exceptions.InstanceNotFoundException;
 import com.nonninz.robomodel.exceptions.JsonException;
 import com.nonninz.robomodel.util.Ln;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
 /**
  * @author Francesco Donadon <francesco.donadon@gmail.com>
- * 
+ *
  *         RoboManager:
  *         1. Provides an interface to conveniently query and operate the DB for RoboModel instances with:
  *         - all()
@@ -44,7 +44,7 @@ import com.nonninz.robomodel.util.Ln;
  *         - find(id)
  *         - deleteAll()
  * @param <T>
- * 
+ *
  */
 public class RoboManager<T extends RoboModel> {
     private static final String CREATE_ERROR = "Error while creating a model instance.";
@@ -54,6 +54,13 @@ public class RoboManager<T extends RoboModel> {
     private final Class<T> mKlass;
     private final RoboModel mSampleModel;
 
+    private RoboManager(Context context, Class<T> klass) {
+        mContext = context;
+        mKlass = klass;
+        mDatabaseManager = new DatabaseManager(context);
+        mSampleModel = create();
+    }
+
     /**
      * @param context
      * @param klass
@@ -62,16 +69,13 @@ public class RoboManager<T extends RoboModel> {
         return new RoboManager<TT>(context, klass);
     }
 
-    private RoboManager(Context context, Class<T> klass) {
-        mContext = context;
-        mKlass = klass;
-        mDatabaseManager = new DatabaseManager(context);
-        mSampleModel = create();
-    }
-
     public List<T> all() {
         final long[] ids = getSelectedModelIds(null, null, null, null, null);
         return getRecords(ids);
+    }
+
+    public void closeDatabase() {
+        mDatabaseManager.closeDatabase();
     }
 
     public int count() {
@@ -80,22 +84,11 @@ public class RoboManager<T extends RoboModel> {
         return ids.length;
     }
 
-    public T last() throws InstanceNotFoundException {
-        final T record = create();
-        final long id = getLastId();
-        record.load(id);
-        return record;
-    }
-
-    public void deleteAll() {
-        /*
-         * In case of invalid DB structure we try to fix it and re-run the delete
-         */
+    public T create() {
         try {
-            mDatabaseManager.deleteAllRecords(getDatabaseName(), getTableName());
-        } catch (final SQLiteException e) {
-            prepareTable(mDatabaseManager.openOrCreateDatabase(getDatabaseName()));
-            mDatabaseManager.deleteAllRecords(getDatabaseName(), getTableName());
+            return (T) createModelObject();
+        } catch (final Exception e) {
+            throw new RuntimeException(CREATE_ERROR, e);
         }
     }
 
@@ -125,20 +118,24 @@ public class RoboManager<T extends RoboModel> {
         }
     }
 
-    public T create() {
-        try {
-            return (T) createModelObject();
-        } catch (final Exception e) {
-            throw new RuntimeException(CREATE_ERROR, e);
-        }
-    }
-
     private T createModelObject() throws ClassNotFoundException, InstantiationException,
-                    IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+            IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
         T newModel = mKlass.newInstance();
         newModel.setContext(mContext);
         return newModel;
+    }
+
+    public void deleteAll() {
+        /*
+         * In case of invalid DB structure we try to fix it and re-run the delete
+         */
+        try {
+            mDatabaseManager.deleteAllRecords(getDatabaseName(), getTableName());
+        } catch (final SQLiteException e) {
+            prepareTable(mDatabaseManager.openOrCreateDatabase(getDatabaseName()));
+            mDatabaseManager.deleteAllRecords(getDatabaseName(), getTableName());
+        }
     }
 
     public void dropTable() {
@@ -152,20 +149,80 @@ public class RoboManager<T extends RoboModel> {
         return record;
     }
 
-    public T loadRecord(int position) throws InstanceNotFoundException {
-        final T model = create();
-        model.loadRecord(position);
-        return model;
+    public T findByUniqueKey(String columnName, long key) throws InstanceNotFoundException {
+        final List<T> found = where(String.format(Locale.US, "%s = %d", columnName, key));
+        if (found.size() > 0) {
+            return found.get(0);
+        } else {
+            final String msg = String.format("No record for table %s with column %s = %d",
+                    mSampleModel.getTableName(), columnName, key);
+            throw new InstanceNotFoundException(msg);
+        }
     }
 
     public String getDatabaseName() {
         return mDatabaseManager.getDatabaseName();
     }
 
+    public long[] getSelectedModelIds(String selection, String[] selectionArgs, String groupBy,
+                                      String having, String orderBy) {
+        final SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
+
+        final String columns[] = new String[]{BaseColumns._ID};
+        Cursor query;
+
+        /*
+         * Try the query. If the Table doesn't exist, fix the DB and re-run the query.
+         */
+        try {
+            query = db.query(getTableName(), columns, selection, selectionArgs, groupBy,
+                    having, orderBy);
+        } catch (final SQLiteException e) {
+            prepareTable(db);
+            query = db.query(getTableName(), columns, selection, selectionArgs, groupBy,
+                    having, orderBy);
+        }
+
+        final int columnIndex = query.getColumnIndex(BaseColumns._ID);
+        final long result[] = new long[query.getCount()];
+        for (query.moveToFirst(); !query.isAfterLast(); query.moveToNext()) {
+            result[query.getPosition()] = query.getLong(columnIndex);
+        }
+
+        return result;
+    }
+
+    public T last() throws InstanceNotFoundException {
+        final T record = create();
+        final long id = getLastId();
+        record.load(id);
+        return record;
+    }
+
+    public T loadRecord(int position) throws InstanceNotFoundException {
+        final T model = create();
+        model.loadRecord(position);
+        return model;
+    }
+
+    public List<T> where(String selection) {
+        return where(selection, null, null, null, null);
+    }
+
+    public List<T> where(String selection, String[] selectionArgs) {
+        return where(selection, selectionArgs, null, null, null);
+    }
+
+    public List<T> where(String selection, String[] selectionArgs, String groupBy, String having,
+                         String orderBy) {
+        final long[] ids = getSelectedModelIds(selection, selectionArgs, groupBy, having, orderBy);
+        return getRecords(ids);
+    }
+
     private long getLastId() throws InstanceNotFoundException {
         final SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
 
-        final String columns[] = new String[] { BaseColumns._ID };
+        final String columns[] = new String[]{BaseColumns._ID};
         Cursor query;
         /*
          * Try the query. If the Table doesn't exist, fix the DB and re-run the query.
@@ -185,69 +242,6 @@ public class RoboManager<T extends RoboModel> {
         }
     }
 
-    public long[] getSelectedModelIds(String selection, String[] selectionArgs, String groupBy,
-                    String having, String orderBy) {
-        final SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
-
-        final String columns[] = new String[] { BaseColumns._ID };
-        Cursor query;
-
-        /*
-         * Try the query. If the Table doesn't exist, fix the DB and re-run the query.
-         */
-        try {
-            query = db.query(getTableName(), columns, selection, selectionArgs, groupBy,
-                            having, orderBy);
-        } catch (final SQLiteException e) {
-            prepareTable(db);
-            query = db.query(getTableName(), columns, selection, selectionArgs, groupBy,
-                            having, orderBy);
-        }
-
-        final int columnIndex = query.getColumnIndex(BaseColumns._ID);
-        final long result[] = new long[query.getCount()];
-        for (query.moveToFirst(); !query.isAfterLast(); query.moveToNext()) {
-            result[query.getPosition()] = query.getLong(columnIndex);
-        }
-
-        return result;
-    }
-
-    private void prepareTable(final SQLiteDatabase db) {
-        T model = create();
-
-        mDatabaseManager.createOrPopulateTable(getTableName(), model.getSavedFields(), db);
-    }
-
-    private String getTableName() {
-        return mSampleModel.getTableName();
-    }
-
-    public T findByUniqueKey(String columnName, long key) throws InstanceNotFoundException {
-        final List<T> found = where(String.format(Locale.US, "%s = %d", columnName, key));
-        if (found.size() > 0) {
-            return found.get(0);
-        } else {
-            final String msg = String.format("No record for table %s with column %s = %d",
-                    mSampleModel.getTableName(), columnName, key);
-            throw new InstanceNotFoundException(msg);
-        }
-    }
-
-    public List<T> where(String selection) {
-        return where(selection, null, null, null, null);
-    }
-
-    public List<T> where(String selection, String[] selectionArgs) {
-        return where(selection, selectionArgs, null, null, null);
-    }
-
-    public List<T> where(String selection, String[] selectionArgs, String groupBy, String having,
-                    String orderBy) {
-        final long[] ids = getSelectedModelIds(selection, selectionArgs, groupBy, having, orderBy);
-        return getRecords(ids);
-    }
-
     private List<T> getRecords(long[] ids) {
         final List<T> result = new ArrayList<T>(ids.length);
         for (final long id : ids) {
@@ -260,7 +254,13 @@ public class RoboManager<T extends RoboModel> {
         return result;
     }
 
-    public void closeDatabase() {
-        mDatabaseManager.closeDatabase();
+    private String getTableName() {
+        return mSampleModel.getTableName();
+    }
+
+    private void prepareTable(final SQLiteDatabase db) {
+        T model = create();
+
+        mDatabaseManager.createOrPopulateTable(getTableName(), model.getSavedFields(), db);
     }
 }

@@ -40,9 +40,8 @@ import com.nonninz.robomodel.util.Ln;
  * 
  */
 class DatabaseManager {
-    public static String where(long id) {
-        return _ID + " = " + id;
-    }
+    private static SQLiteDatabase sDatabase;
+    private static String sDatabaseName;
 
     public static String getTypeForField(Field field) {
         final Class<?> type = field.getType();
@@ -71,8 +70,9 @@ class DatabaseManager {
         }
     }
 
-    private static SQLiteDatabase sDatabase;
-    private static String sDatabaseName;
+    public static String where(long id) {
+        return _ID + " = " + id;
+    }
     private final Context mContext;
 
     /**
@@ -80,6 +80,15 @@ class DatabaseManager {
      */
     public DatabaseManager(Context context) {
         mContext = context;
+    }
+
+    /**
+     * @param databaseName
+     * @param tableName
+     */
+    public void deleteAllRecords(String databaseName, String tableName) {
+        final SQLiteDatabase db = openOrCreateDatabase(databaseName);
+        db.delete(tableName, null, null);
     }
 
     public String getDatabaseName() {
@@ -101,20 +110,11 @@ class DatabaseManager {
         db.execSQL(sql);
     }
 
-    long insertOrUpdate(String tableName, TypedContentValues values, long id,
-                    SQLiteDatabase database) {
-        if (id == RoboModel.UNSAVED_MODEL_ID) {
-            return database.insertOrThrow(tableName, null, values.toContentValues());
-        } else {
-            database.update(tableName, values.toContentValues(), where(id), null);
-            return id;
+    void closeDatabase() {
+        if (sDatabase != null) {
+            sDatabase.close();
+            sDatabase = null;
         }
-    }
-
-    void dropTable(String tableName, SQLiteDatabase db) {
-        final StringBuilder sql = new StringBuilder("DROP TABLE IF EXISTS ").append(tableName).append(";");
-        Ln.d("Dropping table: %s", sql.toString());
-        db.execSQL(sql.toString());
     }
 
     /**
@@ -170,18 +170,25 @@ class DatabaseManager {
         db.execSQL(sql.toString());
     }
 
-    /**
-     * @param databaseName
-     * @param tableName
-     */
-    public void deleteAllRecords(String databaseName, String tableName) {
-        final SQLiteDatabase db = openOrCreateDatabase(databaseName);
-        db.delete(tableName, null, null);
-    }
-
     void deleteRecord(String databaseName, String tableName, long id) {
         final SQLiteDatabase db = openOrCreateDatabase(databaseName);
         db.delete(tableName, where(id), null);
+    }
+
+    void dropTable(String tableName, SQLiteDatabase db) {
+        final StringBuilder sql = new StringBuilder("DROP TABLE IF EXISTS ").append(tableName).append(";");
+        Ln.d("Dropping table: %s", sql.toString());
+        db.execSQL(sql.toString());
+    }
+
+    long insertOrUpdate(String tableName, TypedContentValues values, long id,
+                    SQLiteDatabase database) {
+        if (id == RoboModel.UNSAVED_MODEL_ID) {
+            return database.insertOrThrow(tableName, null, values.toContentValues());
+        } else {
+            database.update(tableName, values.toContentValues(), where(id), null);
+            return id;
+        }
     }
 
     SQLiteDatabase openOrCreateDatabase(String databaseName) {
@@ -190,12 +197,5 @@ class DatabaseManager {
                             Context.MODE_PRIVATE, null);
         }
         return sDatabase;
-    }
-
-    void closeDatabase() {
-        if (sDatabase != null) {
-            sDatabase.close();
-            sDatabase = null;
-        }
     }
 }
