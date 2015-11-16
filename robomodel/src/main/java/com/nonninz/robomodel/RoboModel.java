@@ -54,22 +54,23 @@ import com.nonninz.robomodel.util.Ln;
 public abstract class RoboModel {
     public static final long UNSAVED_MODEL_ID = -1;
 
-    private String mTableName;
-
-    protected long mId = UNSAVED_MODEL_ID;
-
     private final Class<? extends RoboModel> mClass = this.getClass();
+    private final ObjectMapper mMapper = new ObjectMapper();
+    protected long mId = UNSAVED_MODEL_ID;
+    private String mTableName;
     private Context mContext;
     private DatabaseManager mDatabaseManager;
-    private final ObjectMapper mMapper = new ObjectMapper();
+    private List<Field> mSavedFields;
+
+    protected RoboModel() {}
+
+    protected Context getContext() {
+        return mContext;
+    }
 
     protected void setContext(Context context) {
         mContext = context;
         mDatabaseManager = new DatabaseManager(context);
-    }
-
-    protected Context getContext() {
-        return mContext;
     }
 
     public void delete() {
@@ -95,25 +96,27 @@ public abstract class RoboModel {
         return mId;
     }
 
-    List<Field> getSavedFields() { //TODO: cache results
-        final List<Field> savedFields = new ArrayList<Field>();
+    List<Field> getSavedFields() {
+        if (mSavedFields == null) {
+            mSavedFields = new ArrayList<Field>();
 
-        final Field[] declaredFields = getClass().getDeclaredFields();
-        boolean saved;
-        for (final Field field : declaredFields) {
+            final Field[] declaredFields = getClass().getDeclaredFields();
+            boolean saved;
+            for (final Field field : declaredFields) {
 
-            saved = false;
-            saved = saved || field.isAnnotationPresent(Save.class); // If @Save is present, save it
-            saved = saved || Modifier.isPublic(field.getModifiers()); // If it is public, save it
-            saved = saved && !Modifier.isStatic(field.getModifiers()); // If it is static, don't save it
-            saved = saved && !field.isAnnotationPresent(Exclude.class); // If @Exclude, don't save it
+                saved = false;
+                saved = saved || field.isAnnotationPresent(Save.class); // If @Save is present, save it
+                saved = saved || Modifier.isPublic(field.getModifiers()); // If it is public, save it
+                saved = saved && !Modifier.isStatic(field.getModifiers()); // If it is static, don't save it
+                saved = saved && !field.isAnnotationPresent(Exclude.class); // If @Exclude, don't save it
 
-            if (saved) {
-                savedFields.add(field);
+                if (saved) {
+                    mSavedFields.add(field);
+                }
             }
         }
 
-        return savedFields;
+        return mSavedFields;
     }
 
     public boolean isSaved() {
