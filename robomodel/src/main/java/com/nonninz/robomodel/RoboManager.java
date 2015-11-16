@@ -74,6 +74,18 @@ public class RoboManager<T extends RoboModel> {
         return getRecords(ids);
     }
 
+    public void clear() {
+        /*
+         * In case of invalid DB structure we try to fix it and re-run the delete
+         */
+        try {
+            mDatabaseManager.deleteAllRecords(getDatabaseName(), getTableName());
+        } catch (final SQLiteException e) {
+            prepareTable(mDatabaseManager.openOrCreateDatabase(getDatabaseName()));
+            mDatabaseManager.deleteAllRecords(getDatabaseName(), getTableName());
+        }
+    }
+
     public void closeDatabase() {
         mDatabaseManager.closeDatabase();
     }
@@ -118,26 +130,6 @@ public class RoboManager<T extends RoboModel> {
         }
     }
 
-    private T createModelObject() throws ClassNotFoundException, InstantiationException,
-            IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-
-        T newModel = mKlass.newInstance();
-        newModel.setContext(mContext);
-        return newModel;
-    }
-
-    public void deleteAll() {
-        /*
-         * In case of invalid DB structure we try to fix it and re-run the delete
-         */
-        try {
-            mDatabaseManager.deleteAllRecords(getDatabaseName(), getTableName());
-        } catch (final SQLiteException e) {
-            prepareTable(mDatabaseManager.openOrCreateDatabase(getDatabaseName()));
-            mDatabaseManager.deleteAllRecords(getDatabaseName(), getTableName());
-        }
-    }
-
     public void dropTable() {
         final SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
         mDatabaseManager.dropTable(getTableName(), db);
@@ -162,34 +154,6 @@ public class RoboManager<T extends RoboModel> {
 
     public String getDatabaseName() {
         return mDatabaseManager.getDatabaseName();
-    }
-
-    public long[] getSelectedModelIds(String selection, String[] selectionArgs, String groupBy,
-                                      String having, String orderBy) {
-        final SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
-
-        final String columns[] = new String[]{BaseColumns._ID};
-        Cursor query;
-
-        /*
-         * Try the query. If the Table doesn't exist, fix the DB and re-run the query.
-         */
-        try {
-            query = db.query(getTableName(), columns, selection, selectionArgs, groupBy,
-                    having, orderBy);
-        } catch (final SQLiteException e) {
-            prepareTable(db);
-            query = db.query(getTableName(), columns, selection, selectionArgs, groupBy,
-                    having, orderBy);
-        }
-
-        final int columnIndex = query.getColumnIndex(BaseColumns._ID);
-        final long result[] = new long[query.getCount()];
-        for (query.moveToFirst(); !query.isAfterLast(); query.moveToNext()) {
-            result[query.getPosition()] = query.getLong(columnIndex);
-        }
-
-        return result;
     }
 
     public T last() throws InstanceNotFoundException {
@@ -217,6 +181,14 @@ public class RoboManager<T extends RoboModel> {
                          String orderBy) {
         final long[] ids = getSelectedModelIds(selection, selectionArgs, groupBy, having, orderBy);
         return getRecords(ids);
+    }
+
+    private T createModelObject() throws ClassNotFoundException, InstantiationException,
+            IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+
+        T newModel = mKlass.newInstance();
+        newModel.setContext(mContext);
+        return newModel;
     }
 
     private long getLastId() throws InstanceNotFoundException {
@@ -251,6 +223,34 @@ public class RoboManager<T extends RoboModel> {
                 Ln.w(e, "Record with id %d was deleted while being loaded", id);
             }
         }
+        return result;
+    }
+
+    private long[] getSelectedModelIds(String selection, String[] selectionArgs, String groupBy,
+                                       String having, String orderBy) {
+        final SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
+
+        final String columns[] = new String[]{BaseColumns._ID};
+        Cursor query;
+
+        /*
+         * Try the query. If the Table doesn't exist, fix the DB and re-run the query.
+         */
+        try {
+            query = db.query(getTableName(), columns, selection, selectionArgs, groupBy,
+                    having, orderBy);
+        } catch (final SQLiteException e) {
+            prepareTable(db);
+            query = db.query(getTableName(), columns, selection, selectionArgs, groupBy,
+                    having, orderBy);
+        }
+
+        final int columnIndex = query.getColumnIndex(BaseColumns._ID);
+        final long result[] = new long[query.getCount()];
+        for (query.moveToFirst(); !query.isAfterLast(); query.moveToNext()) {
+            result[query.getPosition()] = query.getLong(columnIndex);
+        }
+
         return result;
     }
 
