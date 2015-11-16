@@ -1,5 +1,7 @@
 package com.nonninz.robomodel;
 
+import java.util.List;
+
 public class TestModel extends RoboModel {
 
     public enum Answer {
@@ -18,4 +20,12 @@ public class TestModel extends RoboModel {
     public Answer enumOne = Answer.LIFE;
     public Answer enumTwo = Answer.UNIVERSE;
     public Answer enumThree = Answer.EVERYTHING;
+
+    public static class TestModelArrayCollection extends RoboModelCollection<TestModel> {
+        public TestModel[] models;
+    }
+
+    public static class TestModelListCollection extends RoboModelCollection<TestModel> {
+        public List<TestModel> models;
+    }
 }
