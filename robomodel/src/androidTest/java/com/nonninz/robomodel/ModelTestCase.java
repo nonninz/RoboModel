@@ -43,6 +43,16 @@ public class ModelTestCase extends AndroidTestCase {
         assertEquals(e.getClass(), InstanceNotFoundException.class);
     }
 
+    public void testDeleteResetsId() {
+        final TestModel model = mManager.create();
+        model.save();
+        final long id = model.getId();
+
+        model.delete();
+        assertEquals(RoboModel.UNSAVED_MODEL_ID, model.getId());
+        assertFalse(id == model.getId());
+    }
+
     public void testIsSaved() {
         final TestModel model = mManager.create();
 
