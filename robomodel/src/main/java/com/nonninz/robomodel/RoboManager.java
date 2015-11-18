@@ -62,18 +62,28 @@ public class RoboManager<T extends RoboModel> {
     }
 
     /**
-     * @param context
-     * @param klass
+     * Get an instance of Robomanager for the given class.
+     *
+     * @param context a context instance.
+     * @param klass the Robomodel superclass associated to the manager instance.
      */
     public static <TT extends RoboModel> RoboManager<TT> get(Context context, Class<TT> klass) {
         return new RoboManager<TT>(context, klass);
     }
 
+    /**
+     * Retrieves all the records in the databases.
+     *
+     * @return a List containing all the records in the database.
+     */
     public List<T> all() {
         final long[] ids = getSelectedModelIds(null, null, null, null, null);
         return getRecords(ids);
     }
 
+    /**
+     * Removes all the entries from the database.
+     */
     public void clear() {
         /*
          * In case of invalid DB structure we try to fix it and re-run the delete
@@ -86,16 +96,31 @@ public class RoboManager<T extends RoboModel> {
         }
     }
 
+    /**
+     * Closes the database instance.
+     *
+     * This should not be needed.
+     */
     public void closeDatabase() {
         mDatabaseManager.closeDatabase();
     }
 
+    /**
+     * Returns a count of all the records in the database.
+     *
+     * @return the number of records in the database.
+     */
     public int count() {
         //TODO: Direct COUNT() query
         final long[] ids = getSelectedModelIds(null, null, null, null, null);
         return ids.length;
     }
 
+    /**
+     * Creates a new RoboModel instance of the associated type.
+     *
+     * @return an empty instance of a RoboModel object.
+     */
     public T create() {
         try {
             return (T) createModelObject();
@@ -104,6 +129,14 @@ public class RoboManager<T extends RoboModel> {
         }
     }
 
+    /**
+     * Creates a new RoboModel instance initialized with a JSON object.
+     *
+     * This new instance will not be saved to database.
+     *
+     * @param json a String representing a JSON object.
+     * @return a new instance of T.
+     */
     public T create(String json) {
         ObjectMapper mapper = new ObjectMapper();
         mapper.configure(MapperFeature.USE_ANNOTATIONS, true);
@@ -113,10 +146,37 @@ public class RoboManager<T extends RoboModel> {
             result.setContext(mContext);
             return result;
         } catch (Exception e) {
+            // FIXME: catch Exception? Really, past me?
             throw new JsonException("Error while parsing JSON", e);
         }
     }
 
+    /**
+     * Utility function to create a collection of models from json.
+     *
+     * This method, and the RoboModelCollection class, have been written for the use case where
+     * a REST endpoint will return a collection of elements in the format:
+     *
+     * {
+     *     "elements": [{...}, ..., {...}]
+     * }
+     *
+     * In this use case one could get and save all elements with a single liner:
+     *
+     * manager.createCollection(response, ElementCollection.class).save();
+     *
+     * Assuming that manager is an instance of RoboManager<Element> and
+     * ElementCollection is defined as:
+     *
+     * class ElementCollection extends RoboModelCollection<Element> {
+     *     public List<Element> elements;
+     * }
+     *
+     * @param json a string representing the collection in JSON
+     * @param klass the class of the RoboModelCollection
+     * @param <C> a superclass of RoboModelCollection as defined by the user
+     * @return The collection of models decoded from the provided json.
+     */
     public <C extends RoboModelCollection<T>> C createCollection(String json, Class<C> klass) {
         ObjectMapper mapper = new ObjectMapper();
         mapper.configure(MapperFeature.USE_ANNOTATIONS, true);
@@ -126,21 +186,47 @@ public class RoboManager<T extends RoboModel> {
             result.setContext(mContext);
             return result;
         } catch (Exception e) {
+            // FIXME: Catch Exception??? Really, past me? /o\
             throw new JsonException("Error while parsing JSON", e);
         }
     }
 
+    /**
+     * Drops the table containing all the records for type T.
+     */
     public void dropTable() {
         final SQLiteDatabase db = mDatabaseManager.openOrCreateDatabase(getDatabaseName());
         mDatabaseManager.dropTable(getTableName(), db);
     }
 
+    /**
+     * Returns the instance with the data for the record with the provided id.
+     *
+     * @param id the unique id pertaining to a record as returned by RoboModel#getId()
+     * @return the instance with the data for the record with the provided id.
+     * @throws InstanceNotFoundException if there is no record with such id.
+     */
     public T find(long id) throws InstanceNotFoundException {
         final T record = create();
         record.load(id);
         return record;
     }
 
+    /**
+     * Finds a record with the specified unique id, different than the id provided by default.
+     *
+     * This is useful if the model has already another unique id assigned, for example by the REST
+     * api this data is coming from, and we need to query for that id.
+     *
+     * Note that as this is implemented at the moment there is no requisite for the key to be
+     * unique at all. All this method does is to issue a where() for that column and retrieve the
+     * first record it finds.
+     *
+     * @param columnName the name of the column with the unique key.
+     * @param key the unique key of the record
+     * @return An instance of RoboModel containing the data of the specified record.
+     * @throws InstanceNotFoundException if no instance with that key exists.
+     */
     public T findByUniqueKey(String columnName, long key) throws InstanceNotFoundException {
         final List<T> found = where(String.format(Locale.US, "%s = %d", columnName, key));
         if (found.size() > 0) {
@@ -152,10 +238,26 @@ public class RoboManager<T extends RoboModel> {
         }
     }
 
+    /**
+     * Returns the name of the database where the persisted data of this model is stored.
+     * @return the name of the database where the persisted data of this model is stored.
+     */
     public String getDatabaseName() {
         return mDatabaseManager.getDatabaseName();
     }
 
+    /**
+     * Returns the last inserted record (in theory)
+     *
+     * In practice since no ordering is implied this method will return whatever SQLite decides
+     * to be the last record. Which may or may not be the last INSERTed one. Or maybe not.
+     * who knows.
+     *
+     * What was I even thinking?
+     *
+     * @return the last record in the database according to the planet alignment.
+     * @throws InstanceNotFoundException if there is no record in the database.
+     */
     public T last() throws InstanceNotFoundException {
         final T record = create();
         final long id = getLastId();
